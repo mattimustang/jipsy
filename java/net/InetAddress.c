@@ -23,6 +23,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.7  1999/11/01 16:55:04  mpf
+ * - Modified #includes to reflect their new location.
+ *
  * Revision 1.6  1999/10/27 14:28:49  mpf
  * - Cleaned up unused and unititialised variables.
  *
@@ -45,8 +48,8 @@
  *
  */
 
-#include "net6.h"
-#include "java_net_InetAddress.h"
+#include <net6.h>
+#include <InetAddress.h>
 
 
 /*
