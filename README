@@ -1,0 +1,19 @@
+JIPSY - IPv6 for Java (Java IP version Six readY)
+
+The software contained in this distribution is a drop-in replacement for the
+parts of the java.net class package that are IPv4 dependent. The replacement
+enables existing Java applications to utilise both IPv4 and IPv6 without
+modification or recompilation.
+
+The software is licensed under the GNU LGPL. Please see the file COPYING that came with this distribution for details.
+
+See the file INSTALL for information on compiling and using this software.
+
+The latest version of the software can be downloaded from:
+
+http://www.progsoc.uts.edu.au/~mpf/jipsy
+
+You can contact the author by email at:
+
+mpf@uts.edu.au
+

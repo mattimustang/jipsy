@@ -1,0 +1,46 @@
+
+HOW TO COMPILE AND INSTALL JIPSY
+
+Before using the JIPSY software you must compile the Java classes and native functions that make it up. To do this:
+
+if you unpacked the distribution into /usr/local/src
+
+cd /usr/local/src/jipsy/java/net
+
+edit the Makefile to suite your environment.
+
+then type `make'
+
+This will compile all of the .java and .c files in that directory and link the c object files into a shared library in the $SOURCE_DIR/lib directory.
+
+To use the software you must then change a few environment variable in order to get Java to use the new IPv6 classes instead of it's own. To do this
+
+Set the CLASSPATH to this:
+
+export CLASSPATH=$SOURCE_DIR/jipsy.jar:$CLASSPATH
+export LD_LIBRARY_PATH=/usr/local/src/jipsy/lib
+
+you can now run any java network application and it will use the replacement
+classes.
+
+TROUBLESHOOTING
+
+There is one known problem with using the URL class. This problem showed up
+during the testing of the HotJava Web Browser. The problem manifests itself by
+not allowing you to change to another web site from the initial site that youi
+connect to and results in the exception:
+
+java.lang.NoSuchFieldError: java.net.InetAddress: field address not found
+...
+
+This can be worked around by grabbing copy of the "URL.class" file from the
+"classes.zip" class archive that comes with your Java environment. To do this:
+
+extract URL.class from classes.zip using the jar command
+copy URL.class to /usr/local/src/jipsy/java/net
+cd /usr/local/src/jipsy/java/net
+make jar
+
+this will create a new JAR file with the URL.class file in it along with the JIPSY classes.
+
+NOTE: Please do not re-distribute this software with Sun's URL.class included.
