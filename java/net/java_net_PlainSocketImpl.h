@@ -9,6 +9,14 @@ extern "C" {
 #endif
 /*
  * Class:     java_net_PlainSocketImpl
+ * Method:    sockCreate
+ * Signature: (Z)V
+ */
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
+  (JNIEnv *, jobject, jboolean);
+
+/*
+ * Class:     java_net_PlainSocketImpl
  * Method:    bind
  * Signature: (Ljava/net/InetAddress;I)V
  */
@@ -26,10 +34,18 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_listen
 /*
  * Class:     java_net_PlainSocketImpl
  * Method:    accept
- * Signature: (Ljava/net/SocketImpl;)V
+ * Signature: (Ljava/net/PlainSocketImpl;)V
  */
 JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
   (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     java_net_PlainSocketImpl
+ * Method:    available
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_available
+  (JNIEnv *, jobject);
 
 /*
  * Class:     java_net_PlainSocketImpl
@@ -38,14 +54,6 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
  */
 JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
   (JNIEnv *, jobject, jobject, jint);
-
-/*
- * Class:     java_net_PlainSocketImpl
- * Method:    sockCreate
- * Signature: (Z)V
- */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
-  (JNIEnv *, jobject, jboolean);
 
 /*
  * Class:     java_net_PlainSocketImpl
