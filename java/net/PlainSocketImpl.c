@@ -23,6 +23,14 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/10/27 14:34:52  mpf
+ * - Changed sockCreate() now creates the socket and puts it in this.fd.fd.
+ * - sockConnect() is now working for IPv6 end points. I need to warp the
+ *   socket to an IPv4 socket OR map the IPv4 address to an IPv4 mapped IPv6
+ *   address if the socket is an IPv6 socket.
+ * - Moved all of the helper functions to util.c
+ * - Changed available(), now using select().
+ *
  * Revision 1.1  1999/10/20 23:08:16  mpf
  * Initial Import.
  * - Can almost connect using IPv6 (connects but socket closes straight way).
@@ -50,9 +58,8 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 	jbyteArray addrByteArray;
 	int addrlen = 0;
 	int len = 0;
-	int err;
 
-	int fdnum = get_fdnum(env, this);
+	int sockfd = getSocketFileDescriptor(env, this);
 
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.bind(): entering\n");
@@ -85,7 +92,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 	} else if (addrlen == 0 && host != NULL) {
 		goto error;
 	}
-	if (bind(fdnum, (struct sockaddr *)&ss, len)) {
+	if (bind(sockfd, (struct sockaddr *)&ss, len)) {
 		jint lport;
 		jclass thisClass = (*env)->GetObjectClass(env, this);
 		/* get the this.address field */
@@ -101,9 +108,9 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 		if (port != 0) {
 			/* set this.localport to port */
 			lport = port;
-		} else if ((getsockname(fdnum, (struct sockaddr *)&ss, &len)) == 0) {
+		} else if ((getsockname(sockfd, (struct sockaddr *)&ss, &len)) == 0) {
 			/* set this.localport to ss.sin_port */
-			lport = ntohs(getSocketPort(&ss));
+			lport = ntohs(getSockAddrPort(&ss));
 		} else {
 			goto error;
 		}
@@ -130,12 +137,12 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_listen
   (JNIEnv *env, jobject this, jint backlog)
 {
-	int fdnum = get_fdnum(env, this);
+	int sockfd = getSocketFileDescriptor(env, this);
 
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.listen(): entering\n");
 #endif
-	if (listen(fdnum, backlog) != 0) {
+	if (listen(sockfd, backlog) != 0) {
 		throwException(env, EX_IO, strerror(errno));
 	}
 #ifdef DEBUG
@@ -159,18 +166,18 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 	jbyte *remoteAddressBytes;
 
 	jclass implClass, thisClass, inetClass, fdClass;
-	jfieldID localportID, portID, addressID, fdID, fdnumID, fdfdID;
+	jfieldID localportID, portID, addressID, fdID, sockfdID, fdfdID;
 	jfieldID thisLocalportID;
 	jint localport, remotePort, thisLocalport;
 	jobject newInetAddress, newfd;
 	jmethodID inetMethod, fdMethod;
 	
-	int fdnum = get_fdnum(env, this);
+	int sockfd = getSocketFileDescriptor(env, this);
 
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.accept(): entering\n");
 #endif
-	sock = accept(fdnum, (struct sockaddr *)&ss, &addrlen);
+	sock = accept(sockfd, (struct sockaddr *)&ss, &addrlen);
 
 	if (sock < 0)
 		goto error;
@@ -199,14 +206,14 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 	}
 
 	implClass = (*env)->GetObjectClass(env, impl);
-	fdnumID = (*env)->GetFieldID(env, implClass, "fdnum", "I");
+	sockfdID = (*env)->GetFieldID(env, implClass, "sockfd", "I");
 	localportID = (*env)->GetFieldID(env, implClass, "localport", "I");
 	portID = (*env)->GetFieldID(env, implClass, "port", "I");
 	addressID = (*env)->GetFieldID(env, implClass, "address", "Ljava/net/InetAddress;");
 	fdID = (*env)->GetFieldID(env, implClass, "fd", "Ljava/io/FileDescriptor;");
 
-	/* impl.fdnum = sock; */
-	(*env)->SetIntField(env, impl, fdnumID, sock);
+	/* impl.sockfd = sock; */
+	(*env)->SetIntField(env, impl, sockfdID, sock);
 	
 	/* impl.localport = this.localport; */
 	thisClass = (*env)->GetObjectClass(env, this);
@@ -261,13 +268,12 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 	jbyte *addrBytes = NULL;
 	jbyteArray addrByteArray;
 	int addrlen = 0;
-	int len = 0;
-	int err;
+	socklen_t len = 0;
 
-	int fdnum = get_fdnum(env, this);
+	int sockfd = getSocketFileDescriptor(env, this);
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): entering\n");
+	printf("NATIVE: PlainSocketImpl.sockConnect(): entering sockfd = %d\n", sockfd);
 #endif
 	/* if host is not null then connect to the supplied address */
 	if (host != NULL)  {
@@ -283,18 +289,15 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 		sin = (struct sockaddr_in *)&ss;
 		sin->sin_family = AF_INET;
 		memcpy(&sin->sin_addr, addrBytes, addrlen);
-		sin->sin_port = htons(port);
+		sin->sin_port = port;
 		len = sizeof(struct sockaddr_in);
 
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): got IPv4 address\n");
-#endif
 	/* an IPv6 address */
 	} else if (addrlen == 16) {
 		sin6 = (struct sockaddr_in6 *)&ss;
 		sin6->sin6_family = AF_INET6;
 		memcpy(&sin6->sin6_addr, addrBytes, addrlen);
-		sin6->sin6_port = htons(port);
+		sin6->sin6_port = port;
 		len = sizeof(struct sockaddr_in6);
 
 #ifdef DEBUG
@@ -303,10 +306,8 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 	} else if (addrlen == 0 && host != NULL) {
 		goto error;
 	}
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): connecting %d\n", ss.__ss_family);
-#endif
-	if ((connect(fdnum, (struct sockaddr *)&ss, len)) == 0) {
+	
+	if ((connect(sockfd, (struct sockaddr *)&ss, len)) == 0) {
 		jint remoteport;
 		jclass thisClass;
 		jfieldID addrID, portID;
@@ -330,9 +331,9 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 		if (port != 0) {
 			/* set this.localport to port */
 			remoteport = port;
-		} else if ((getsockname(fdnum, (struct sockaddr *)&ss, &len)) == 0) {
+		} else if ((getsockname(sockfd, (struct sockaddr *)&ss, &len)) == 0) {
 			/* set this.localport to ss.sin_port */
-			remoteport = ntohs(getSocketPort(&ss));
+			remoteport = ntohs(getSockAddrPort(&ss));
 		} else {
 			goto error;
 		}
@@ -342,6 +343,17 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 #endif
 		return;
 
+	} else {
+		if (errno == EBADF) {
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.sockConnect(): connect failed EBADF\n");
+#endif
+		} else {
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.sockConnect(): connect failed errno=%d\n", errno);
+#endif
+
+		}
 	}
 	error:
 #ifdef DEBUG
@@ -356,20 +368,19 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
  * Method:    sockCreate
  * Signature: (Z)V
  */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_create
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
   (JNIEnv *env, jobject this, jboolean stream)
 {
-	int sock;
+	int sockfd;
 	struct addrinfo hints;
-	struct addrinfo *res, *ressave;
+	struct addrinfo *res, *reshead;
 	int err;
-	jfieldID fdID, thisFDID, fdnumID;
-	jclass  fdClass, thisClass;
-	jobject	fdObject, thisFDObject, gfdObject;
-	jmethodID fdMethod;
+	jclass  thisClass, fdClass;
+	jobject	fdObj;
+	jfieldID fdID, fdfdID;
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): entering\n");
+	printf("NATIVE: PlainSocketImpl.sockCreate(): entering\n");
 #endif
 	/* initialise the hints */
 	memset(&hints, 0, sizeof(hints));
@@ -378,85 +389,46 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_create
 	hints.ai_socktype = stream ? SOCK_STREAM : SOCK_DGRAM;
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): calling getaddrinfo()\n");
+	printf("NATIVE: PlainSocketImpl.sockCreate(): calling getaddrinfo()\n");
 #endif
-	err = getaddrinfo(NULL, AI_SERV, &hints, &res);
+	err = getaddrinfo(HOST_NULL, SERV_ZERO, &hints, &res);
 	if (err) {
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): throwing gai_strerror()\n");
-#endif
 		throwException(env, EX_IO, gai_strerror(err));
 		return;
 	}
 
-	ressave = res;
+	reshead = res;
 	do {
-		sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-		if (sock >= 0)
+		sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+		if (sockfd >= 0) {
 			break; /* use this socket */
+		}
 
 	} while ((res = res->ai_next) != NULL);
 
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): throwing sock = %d\n", sock);
-#endif
 	/* throw IOException if none of the sockets were any good */
 	if (res == NULL) {
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): throwing res == NULL\n");
-#endif
-		throwException(env, EX_IO, "Create Socket Error");
+		throwException(env, EX_IO, "sockCreate(): Cannot create a valid socket");
 		return;
 	}
 
-	/* find the FileDescriptor Class */
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): finding FileDescriptor\n");
-#endif
-	fdClass = (*env)->FindClass(env, "java/io/FileDescriptor");
-	
-	/* get the FileDescriptor() constructor */
-	fdMethod = (*env)->GetMethodID(env, fdClass, "<init>", "()V");
-
-	/* create an new object */
-	fdObject = (*env)->NewObject(env, fdClass, fdMethod);
-
-	/* get the fd field from the class */
-/*
-	fdID = (*env)->GetFieldID(env, fdClass, "fd", "I");
-
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): this.fd.fd = sock\n");
-#endif
-	(*env)->SetIntField(env, fdObject, fdID, sock);
-*/	
-/*
-	gfdObject = (*env)->NewGlobalRef(env, fdObject);
-*/
-
-	/* now assign the this.fd FileDescriptor object */
 	thisClass = (*env)->GetObjectClass(env, this);
 
-	/* get the fdnum field from the class */
-	fdnumID= (*env)->GetFieldID(env, thisClass, "fdnum", "I");
-	
+
 	/* get the fd FileDescriptor field */
-	thisFDID = (*env)->GetFieldID(env, thisClass, "fd",
-									"Ljava/io/FileDescriptor;");
+	fdID = (*env)->GetFieldID(env, thisClass, "fd", "Ljava/io/FileDescriptor;");
+	fdObj = (*env)->GetObjectField(env, this, fdID);
+	fdClass = (*env)->GetObjectClass(env, fdObj);
 
-	(*env)->SetObjectField(env, this, thisFDID, fdObject);
-		
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): this.fdnum = sock\n");
-#endif
-	(*env)->SetIntField(env, this, fdnumID, sock);
+	fdfdID = (*env)->GetFieldID(env, fdClass, "fd", "I");
 
+	/* now set it to the newly created socket file descriptor */
+	(*env)->SetIntField(env, fdObj, fdfdID, sockfd);
+	
+
+	freeaddrinfo(reshead);
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): freeaddrinfo()\n");
-#endif
-	freeaddrinfo(ressave);
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.create(): returning\n");
+	printf("NATIVE: PlainSocketImpl.sockCreate(): returning\n");
 #endif
 	return;
 }
@@ -469,121 +441,45 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_create
 JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockClose
   (JNIEnv *env, jobject this)
 {
-	int fdnum = get_fdnum(env, this);
+	int sockfd = getSocketFileDescriptor(env, this);
 
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockClose(): entering\n");
-#endif
 	/* now close the file descriptor */
-	if((close(fdnum)) != 0) {
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockClose(): throwing\n");
-#endif
+	if((close(sockfd)) != 0) {
 		throwException(env, EX_IO, strerror(errno));
 	}
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockClose(): returning\n");
-#endif
 	return;
 }
 
 /*
  * Class:     java_net_PlainSocketImpl
- * Method:    sockAvailable
+ * Method:    available
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_sockAvailable
+JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_available
   (JNIEnv *env, jobject this)
 {
+	int nbits;
+	int sockfd;
+	struct timeval tv;
+	fd_set rset;
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockClose(): entering/returning\n");
+	printf("NATIVE: PlainSocketImpl.available(): entering\n");
 #endif
-	return 1;
-}
+	sockfd = getSocketFileDescriptor(env, this);
 
+	if (sockfd < 0) {
+		errno = EBADF;
+		nbits = 0;
+	} else {
+		FD_ZERO(&rset);
+		FD_SET(sockfd, &rset);
+		tv.tv_sec = 0;
+		tv.tv_usec = 0;
 
-void throwException(JNIEnv *env, int type, const char *msg)
-{
-	jclass exception;
+		nbits = select (sockfd + 1, &rset, NULL, NULL, &tv);
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.throwException(): entering\n");
+	printf("NATIVE: PlainSocketImpl.available(): returning %d\n", nbits);
 #endif
-	switch (type) {
-		case EX_IO:
-			exception = (*env)->FindClass(env, "java/io/IOException");
-			break;
-		case EX_BIND:
-			exception = (*env)->FindClass(env, "java/net/BindException");
-			break;
-		case EX_CONNECT:
-			exception = (*env)->FindClass(env, "java/net/ConnectException");
-			break;
-		case EX_SOCKET:
-			exception = (*env)->FindClass(env, "java/net/ConnectException");
-			break;
-		default:
-			exception = 0;
-			break;
 	}
-	if (exception == 0)
-		return;
-
-	/* throw it */
-	(*env)->ThrowNew(env, exception, msg);
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.throwException(): returning\n");
-#endif
-	return;
-}
-
-int get_fdnum(JNIEnv *env, jobject this)
-{
-	jfieldID fdnumID;
-	jclass	thisClass;
-	int fdnum;
-
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.get_fdnum(): entering\n");
-#endif
-	/* now assign the this.fd FileDescriptor object */
-	thisClass = (*env)->GetObjectClass(env, this);
-
-	/* get the fdnum field from the class */
-	fdnumID = (*env)->GetFieldID(env, thisClass, "fdnum", "I");
-	
-	fdnum = (*env)->GetIntField(env, this, fdnumID);
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.get_fdnum(): returning fdnum = %d\n", fdnum);
-#endif
-
-	return fdnum;
-
-}
-
-/* get the port number out of the socket address structure */
-int getSocketPort(struct sockaddr_storage *ss)
-{
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.getSocketPort(): entering\n");
-#endif
-	switch (ss->__ss_family) {
-		case AF_INET: {
-			struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.getSocketPort(): returning INET\n");
-#endif
-			return (sin->sin_port);
-		}
-		case  AF_INET6: {
-			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.getSocketPort(): returning INET6\n");
-#endif
-			return (sin6->sin6_port);
-		}
-	}
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.getSocketPort(): returning -1\n");
-#endif
-	return -1;
+	return (nbits == 0 ? 0 : 1);
 }
