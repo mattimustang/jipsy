@@ -21,14 +21,17 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/11/01 17:09:50  mpf
+ * - Updated includes.
+ *
  * Revision 1.1  1999/10/27 14:50:05  mpf
  * Inital import.
  *
  *
  */
 
-#include "net6.h"
-#include "socketWrite.h"
+#include <net6.h>
+#include <socketWrite.h>
 
 /*
  * Class:     java_net_SocketOutputStream
