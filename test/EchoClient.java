@@ -10,7 +10,7 @@ public class EchoClient {
 		BufferedReader in = null;
 		String host;
 
-		if (args[0] != null)
+		if (args.length != 0)
 			host = new String(args[0]);
 		else
 			host = new String("arak");
@@ -21,7 +21,8 @@ public class EchoClient {
 			in = new BufferedReader(new InputStreamReader(
 										echoSocket.getInputStream()));
 		} catch (UnknownHostException e) {
-			System.err.println("Couldn't get I/O for the connection to" + host);
+			System.err.println("EchoClient: Couldn't get I/O for the connection to " + host);
+			e.printStackTrace();
 			System.exit(1);
 		}
 
