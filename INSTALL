@@ -1,3 +1,4 @@
+$Id$ 
 
 HOW TO COMPILE AND INSTALL JIPSY
 
@@ -27,14 +28,14 @@ TROUBLESHOOTING
 
 There is one known problem with using the URL class. This problem showed up
 during the testing of the HotJava Web Browser. The problem manifests itself by
-not allowing you to change to another web site from the initial site that youi
+not allowing you to change to another web site from the initial site that you
 connect to and results in the exception:
 
 java.lang.NoSuchFieldError: java.net.InetAddress: field address not found
 ...
 
 This can be worked around by grabbing copy of the "URL.class" file from the
-"classes.zip" class archive that comes with your Java environment. To do this:
+"classes.zip" class archive that comes with your Java environment and putting it with the JIPSY classes. To do this:
 
 extract URL.class from classes.zip using the jar command
 copy URL.class to /usr/local/src/jipsy/java/net
