@@ -10,7 +10,7 @@ CLASSPATH=$SRCDIR/jipsy.jar:/usr/java/lib/classes.zip:.
 LD_LIBRARY_PATH=$SRCDIR/lib
 export LD_LIBRARY_PATH CLASSPATH
 PATH=/usr/java/bin:$PATH
-JAVA=$SRCDIR/bin/j
+JAVA=$SRCDIR/bin/jipsy
 
 SPORT=7
 echo "Testing TCP/IP Client/Server Interaction"
