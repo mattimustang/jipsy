@@ -21,8 +21,12 @@
  * Change Log:
  *
  * $Log$
- * Revision 1.1  1999/10/18 18:47:43  mpf
- * Initial revision
+ * Revision 1.2  1999/10/26 17:14:54  mpf
+ * - Fixed bug in equals() where it comparing addresses correctly.
+ * - Added native call to getAnyLocalAddress() and anyLocalAddress field.
+ *
+ * Revision 1.1.1.1  1999/10/18 18:47:43  mpf
+ * Initial Import
  *
  *
  */
@@ -59,7 +63,7 @@ class InetAddress implements java.io.Serializable {
      * Constructor for the Socket.accept() method.
      */
     InetAddress() {
-		System.out.println("CLASS: InetAddress: InetAddress()");
+		System.out.println("CLASS: InetAddress.InetAddress()");
     }
 
     /**
@@ -72,7 +76,7 @@ class InetAddress implements java.io.Serializable {
     InetAddress(String hostName, byte[] address) {
 		this.hostName = hostName;
 		this.address  = address;
-		System.out.println("CLASS: InetAddress: InetAddress("+hostName+",byte[])");
+		System.out.println("CLASS: InetAddress.InetAddress("+hostName+",byte[])");
     }
 
     /**
@@ -80,7 +84,7 @@ class InetAddress implements java.io.Serializable {
      * IP multicast address.
      */
     public boolean isMulticastAddress() {
-		System.out.println("CLASS: InetAddress: isMulticastAddress()");
+		System.out.println("CLASS: InetAddress.isMulticastAddress()");
 		int len = address.length;
 
 		/* IPv4 address check  for class D address */
@@ -104,7 +108,7 @@ class InetAddress implements java.io.Serializable {
      * @return  the fully qualified host name for this address.
      */
     public String getHostName() {
-		System.out.println("CLASS: InetAddress: getHostName()");
+		System.out.println("CLASS: InetAddress.getHostName()");
 		if (hostName == null) {
 			try {
 				hostName = getHostByAddress(address);
@@ -123,7 +127,7 @@ class InetAddress implements java.io.Serializable {
      * @return  the raw IP address of this object.
      */
     public byte[] getAddress() {	
-		System.out.println("CLASS: InetAddress: getAddress()");
+		System.out.println("CLASS: InetAddress.getAddress()");
 		return address;
     }
 
@@ -139,7 +143,7 @@ class InetAddress implements java.io.Serializable {
 		/* defined in <netinet/in.h> INET6_ADDRSTRLEN = 46 */
 		StringBuffer addrBuffer = new StringBuffer(46);
 
-		System.out.println("CLASS: InetAddress: getHostAddress()");
+		System.out.println("CLASS: InetAddress.getHostAddress()");
 
 		/* We have an IPv6 address.
 		 * Return full address for now and don't worry about
@@ -176,7 +180,7 @@ class InetAddress implements java.io.Serializable {
      * @return  a hash code value for this IP address. 
      */
     public int hashCode() {
-		System.out.println("CLASS: InetAddress: hashCode()");
+		System.out.println("CLASS: InetAddress.hashCode()");
 		int hash = 0;
 		int i = 0;
 		int len = address.length;
@@ -208,15 +212,21 @@ class InetAddress implements java.io.Serializable {
      * @see     java.net.InetAddress#getAddress()
      */
     public boolean equals(Object obj) {
-		System.out.println("CLASS: InetAddress: equals()");
+		System.out.println("CLASS: InetAddress.equals()");
 		if ( (obj != null) && (obj instanceof InetAddress) )
 		{
 			byte addr[] = ((InetAddress)obj).getAddress();
-			if ( (addr == address) && (addr.length == address.length) )
+			if ( addr.length == address.length ) {
+				for (int i = 0; i < address.length; i++) {
+					if (address[i] != addr[i]) {
+						return false;
+					}
+				}
 			return true;
-		}
+			}
+    	}
 		return false;
-    }
+	}
 
     /**
      * Converts this IP address to a <code>String</code>.
@@ -224,25 +234,28 @@ class InetAddress implements java.io.Serializable {
      * @return  a string representation of this IP address.
      */
     public String toString() {
-		System.out.println("CLASS: InetAddress: toString()");
+		System.out.println("CLASS: InetAddress.toString()");
 		return getHostName() + "/" + getHostAddress();
     }
 
     private static InetAddress		localHost = null;
     private static InetAddress		loopbackHost;
-    private static byte[]			loopbackAddress;
+    private static InetAddress		anyLocalAddress;
+    //private static byte[]			loopbackAddress;
 
 
 	static {
-		loopbackAddress = new byte[4];
+		//loopbackAddress = new byte[4];
 
 		/* a temporary hack to use only IPv4 loopback address */
-		loopbackAddress[0] = 0x7F;
-		loopbackAddress[1] = 0x00;
-		loopbackAddress[2] = 0x00;
-		loopbackAddress[3] = 0x01;
+		//loopbackAddress[0] = 0x7F;
+		//loopbackAddress[1] = 0x00;
+		//loopbackAddress[2] = 0x00;
+		//loopbackAddress[3] = 0x01;
 
-		loopbackHost = new InetAddress("localhost", loopbackAddress);
+		loopbackHost = new InetAddress("localhost", getLoopbackAddress());
+		anyLocalAddress = new InetAddress(null, getAnyLocalAddress());
+		
 
 	}
     /**
@@ -259,7 +272,7 @@ class InetAddress implements java.io.Serializable {
      */
     public static InetAddress getByName(String host)
 	throws UnknownHostException {
-		System.out.println("CLASS: InetAddress: getByName("+host+")");
+		System.out.println("CLASS: InetAddress.getByName("+host+")");
 		if ( (host == null) || (host.length() == 0) ) {
 			return loopbackHost;
 		} else {
@@ -290,7 +303,7 @@ class InetAddress implements java.io.Serializable {
     public static InetAddress getAllByName(String host)[]
 	throws UnknownHostException {
 
-		System.out.println("CLASS: InetAddress: getAllByName("+host+")[]");
+		System.out.println("CLASS: InetAddress.getAllByName("+host+")[]");
 		if (host == null || host.length() == 0) {
 	    	throw new UnknownHostException(host == null ? "Null string" : host);
 		}
@@ -323,7 +336,7 @@ class InetAddress implements java.io.Serializable {
      *               <code>host</code> could be found.
      */
     public static InetAddress getLocalHost() throws UnknownHostException {
-		System.out.println("CLASS: InetAddress: getLocalHost()");
+		System.out.println("CLASS: InetAddress.getLocalHost()");
 
 		SecurityManager s = System.getSecurityManager();
 		
@@ -353,6 +366,7 @@ class InetAddress implements java.io.Serializable {
 	 */
 	private static native byte[] pton(String host);
 	private static native byte[] getLoopbackAddress();
+	private static native byte[] getAnyLocalAddress();
     private static native String getLocalHostName();
 	private static native byte[][] getAllHostAddresses(String host) throws UnknownHostException;
 	private static native String getHostByAddress(byte[] addr) throws UnknownHostException;
