@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.5  1999/11/30 14:39:49  mpf
+ * - removed some old unused and commented out code.
+ *
  * Revision 1.4  1999/11/07 05:51:46  mpf
  * - Added DEBUG variable.
  *
@@ -225,16 +228,21 @@ class InetAddress implements java.io.Serializable {
 		if (DEBUG) System.out.println("CLASS: InetAddress.equals()");
 		if ( (obj != null) && (obj instanceof InetAddress) )
 		{
+			if (DEBUG) System.out.println("CLASS: InetAddress.equals(): obj.getAddress()");
 			byte addr[] = ((InetAddress)obj).getAddress();
-			if ( addr.length == address.length ) {
-				for (int i = 0; i < address.length; i++) {
-					if (address[i] != addr[i]) {
+			if ( addr.length == this.address.length ) {
+			if (DEBUG) System.out.println("CLASS: InetAddress.equals: length equal");
+				for (int i = 0; i < this.address.length; i++) {
+					if (this.address[i] != addr[i]) {
+			if (DEBUG) System.out.println("CLASS: InetAddress.equals: returning false");
 						return false;
 					}
 				}
+			if (DEBUG) System.out.println("CLASS: InetAddress.equals: returning true");
 			return true;
 			}
     	}
+			if (DEBUG) System.out.println("CLASS: InetAddress.equals: returning false");
 		return false;
 	}
 
@@ -251,22 +259,10 @@ class InetAddress implements java.io.Serializable {
     private static InetAddress		localHost = null;
     private static InetAddress		loopbackHost;
     static InetAddress		anyLocalAddress;
-    //private static byte[]			loopbackAddress;
-
 
 	static {
-		//loopbackAddress = new byte[4];
-
-		/* a temporary hack to use only IPv4 loopback address */
-		//loopbackAddress[0] = 0x7F;
-		//loopbackAddress[1] = 0x00;
-		//loopbackAddress[2] = 0x00;
-		//loopbackAddress[3] = 0x01;
-
 		loopbackHost = new InetAddress("localhost", getLoopbackAddress());
 		anyLocalAddress = new InetAddress(null, getAnyLocalAddress());
-		
-
 	}
     /**
      * Determines the IP address of a host, given the host's name. The 
