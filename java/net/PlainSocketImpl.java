@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.6  1999/11/08 13:35:13  mpf
+ * - Disabled debugging
+ *
  * Revision 1.5  1999/11/07 05:51:46  mpf
  * - Added DEBUG variable.
  *
@@ -60,7 +63,7 @@ class PlainSocketImpl extends SocketImpl {
 	int timeout = 0;
 
 	// set this to true to enable debugging output
-	private final static boolean DEBUG = true;
+	private final static boolean DEBUG = false;
 	
 	static {
 		System.loadLibrary("net6");
