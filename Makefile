@@ -83,6 +83,7 @@ jni: $(JAVA_CLASSES)
 	bin/makejniheaders
 
 jar: $(JAVA_CLASSES)
+	test -d lib || mkdir lib
 	$(JAR) -0cvf lib/jipsy.jar java/net/*.class
 
 test:
