@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/11/04 12:28:28  mpf
+ * - Added Java socket option definitions.
+ *
  * Revision 1.2  1999/11/01 17:23:41  mpf
  * *** empty log message ***
  *
@@ -42,6 +45,7 @@
 #include <sys/time.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
@@ -62,6 +66,14 @@
 #define IPV4_ADDRLEN		4
 #define IPV6_ADDRLEN		16
 
+
+/* Socket options as defined in java.net.SocketOptions */
+#define J_TCP_NODELAY		0x0001
+#define J_SO_BINDADDR		0x000F
+#define J_SO_REUSEADDR		0x04
+#define J_IP_MULTICAST_IF	0x10
+#define J_SO_LINGER			0x0080
+#define J_SO_TIMEOUT		0x1006
 
 /* function prototypes */
 
