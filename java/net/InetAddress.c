@@ -1,3 +1,36 @@
+/*
+ * $Id$
+ *
+ * InetAddress.c - An IPv6 capable version of the InetAddress class.
+ *                 This is the native implementation.
+ *
+ * Copyright (C) 1999 Matthew Flanagan.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Change Log:
+ *
+ * $Log$
+ * Revision 1.2  1999/10/20 07:39:12  mpf
+ * - Added CVS Id and Log tags.
+ * - Added LGPL license header.
+ * - Moved some definitions to net6.h.
+ *
+ *
+ */
+
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -5,10 +38,8 @@
 #include <netdb.h>
 #include <jni.h>
 #include "java_net_InetAddress.h"
+#include "net6.h"
 
-#define DEBUG 1
-#undef DEBUG
-#define AI_SERV "0"
 
 /*
  * Class:     java_net_InetAddress
@@ -168,9 +199,6 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 {
 	char *hostname;
 	
-	struct sockaddr_storage ss;
-	struct sockaddr_in		*sin;
-	struct sockaddr_in6		*sin6;
 	struct addrinfo			hints;
 	struct addrinfo			*res;
 	struct addrinfo			*ressave;
@@ -266,7 +294,7 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	/* free the the result pointer */
 	freeaddrinfo(ressave);
 #ifdef DEBUG
-	printf("NATIVE: getAllHostAddresses(): leave\n");
+	printf("NATIVE: getAllHostAddresses(): returning\n");
 #endif
 	return addressArray;
 }
@@ -332,7 +360,7 @@ JNIEXPORT jstring JNICALL Java_java_net_InetAddress_getHostByAddress
 	}
 	hostname = buf;
 #ifdef DEBUG
-	printf("NATIVE: getHostByAddress(): leave %s\n", hostname);
+	printf("NATIVE: getHostByAddress(): returning %s\n", hostname);
 #endif
 	return (*env)->NewStringUTF(env, hostname);
 }
