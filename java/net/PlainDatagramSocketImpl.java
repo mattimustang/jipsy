@@ -22,6 +22,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  2000/08/28 06:05:56  mpf
+ * - Added Java2 setTimeToLive() and getTimeToLive() native methods.
+ *
  * Revision 1.3  1999/11/08 13:34:25  mpf
  * - Disabled debugging
  *
@@ -79,6 +82,10 @@ class PlainDatagramSocketImpl extends DatagramSocketImpl
     protected native void setTTL(byte ttl) throws IOException;
 
     protected native byte getTTL() throws IOException;
+
+    protected native void setTimeToLive(int ttl) throws IOException;
+
+    protected native int getTimeToLive() throws IOException;
 
     protected native void join(InetAddress inetaddr) throws IOException;
 
