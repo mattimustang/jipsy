@@ -21,6 +21,10 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/11/01 17:21:34  mpf
+ * - Updated includes.
+ * - Added getSocketFamily() function.
+ *
  * Revision 1.1  1999/10/27 14:40:36  mpf
  * - Initial Import.
  * - most of these functions have moved from PlainSocketImpl.c.
@@ -28,7 +32,7 @@
  *
  */
 
-#include "net6.h"
+#include <net6.h>
 
 /**
  * get the socket file descriptor from a SocketImpl instance
@@ -164,3 +168,14 @@ int setSocketFamily(int *sockfd, int af)
 	return 0;
 }
 
+int getSocketFamily(int sockfd)
+{
+	struct sockaddr_storage ss;
+	int len = sizeof(ss);
+
+	if (getsockname(sockfd, (struct sockaddr *)&ss, &len) == 0) {
+		return ss.__ss_family;
+	}
+
+	return -1;
+} 
