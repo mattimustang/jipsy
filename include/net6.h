@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.5  1999/12/06 06:23:37  mpf
+ * - removed debug definition from here. now in makefile.
+ *
  * Revision 1.4  1999/11/08 13:42:22  mpf
  * - Added CREATE_IPV6_MAPPED() and SS_FAMILY() macros.
  *
@@ -54,7 +57,6 @@
 
 #include <jni.h>
 
-#define DEBUG		1
 #define SERV_ZERO		"0"		/* used as 'serv' argument to getaddrinfo() */
 #define SERV_NULL		"*"
 #define HOST_NULL		"*"
