@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/12/07 12:12:06  mpf
+ * - more cleaning up.
+ *
  * Revision 1.1  1999/12/07 08:19:52  mpf
  * - Initial import
  *
@@ -31,7 +34,7 @@
 import java.io.*;
 import java.net.*;
 
-public class PDSITest {
+public class PDSITestClient {
 	public static void main(String[] args) throws IOException {
 		String remoteAddress = null;
 		String localAddress = null;
@@ -39,7 +42,7 @@ public class PDSITest {
 		int localPort = 0;
 
 		if (args.length < 4) {
-			System.out.println("Usage: PSITest <remote address> <remote port> <local address> <local port>");
+			System.out.println("Usage: PDSITestClient <remote address> <remote port> <local address> <local port>");
 			System.exit(1);
 		} else {
 			remoteAddress = new String(args[0]);
@@ -49,7 +52,7 @@ public class PDSITest {
 		}
 
 		try {
-			System.out.print("TEST: Connecting to: " + remoteAddress + " port " + remotePort+": ");
+			System.out.print("\nTEST: Connecting to: " + remoteAddress + " port " + remotePort+": ");
 			DatagramSocket ds = new DatagramSocket();
 			SendRecvDatagrams(ds, remoteAddress, remotePort);
 			ds.close();	
@@ -62,7 +65,7 @@ public class PDSITest {
 		}
 
 		try {
-			System.out.print("\nTEST: Connecting to: " + remoteAddress + " port " + remotePort
+			System.out.print("TEST: Connecting to: " + remoteAddress + " port " + remotePort
 								+ " from port " + localPort+": ");
 			DatagramSocket ds = new DatagramSocket(localPort);
 			SendRecvDatagrams(ds, remoteAddress, remotePort);
@@ -78,7 +81,7 @@ public class PDSITest {
 
 
 		try {
-			System.out.print("\nTEST: Connecting to: " + remoteAddress + " port " + remotePort
+			System.out.print("TEST: Connecting to: " + remoteAddress + " port " + remotePort
 				+ " from " + localAddress + " port " + (localPort+5) +": ");
 			DatagramSocket ds = new DatagramSocket(localPort+5, InetAddress.getByName(localAddress));
 			SendRecvDatagrams(ds, remoteAddress, remotePort);
