@@ -2,7 +2,7 @@
  * $Id$
  *
  * InetAddress.java - An IPv6 capable version of the InetAddress class.
- * Copyright (C) 1999 Matthew Flanagan.
+ * Copyright (C) 1999 Matthew Flanagan. All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,8 +21,11 @@
  * Change Log:
  *
  * $Log$
- * Revision 1.1  1999/10/18 18:47:43  mpf
- * Initial revision
+ * Revision 1.2  1999/11/08 13:39:40  mpf
+ * *** empty log message ***
+ *
+ * Revision 1.1.1.1  1999/10/18 18:47:43  mpf
+ * Initial Import
  *
  *
  */
