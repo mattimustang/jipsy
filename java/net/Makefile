@@ -34,7 +34,7 @@ CLASS		= $(patsubst %.java,% ,$(wildcard $(JAVASRC)))
 #%.o: %.c
 #	$(CC) $(CFLAGS) $<
 
-all: classes jni lib
+all: classes lib
 
 lib: $(OBJS)
 	$(CC) $(LDFLAGS) -o $(DESTLIB) $(OBJS)
