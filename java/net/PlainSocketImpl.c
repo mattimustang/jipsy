@@ -23,6 +23,11 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.5  1999/11/07 05:57:01  mpf
+ * - Modified available() to use ioctl() and FIONREAD in preference to
+ *   select() because of problems with select() when the read-half of the
+ *   connection closes. See Stevens UNP p153.
+ *
  * Revision 1.4  1999/11/03 22:27:56  mpf
  * - Added getOption and setOption native functions.
  *
@@ -502,19 +507,28 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketClose
 JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_available
   (JNIEnv *env, jobject this)
 {
-	int nbits;
 	int sockfd;
-	struct timeval tv;
-	fd_set rset;
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.available(): entering\n");
 #endif
 	sockfd = getSocketFileDescriptor(env, this);
 
-	if (sockfd < 0) {
-		errno = EBADF;
-		nbits = 0;
-	} else {
+	if (sockfd < 0)
+		goto error;
+#if defined(FIONREAD)
+	{
+		long nbytes;
+
+		if (ioctl(sockfd, FIONREAD, &nbytes) < 0)
+			goto error;
+
+		return (jint)nbytes;
+	}
+#elif defined(HAVE_SELECT)
+	{
+		struct timeval tv;
+		fd_set rset;
+		int nbits;
 		FD_ZERO(&rset);
 		FD_SET(sockfd, &rset);
 		tv.tv_sec = 0;
@@ -524,8 +538,14 @@ JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_available
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.available(): returning %d\n", nbits);
 #endif
+		if (nbits < 0)
+			goto error;
+		return ((nbits == 0) ? 0 : 1);
 	}
-	return (nbits == 0 ? 0 : 1);
+#endif
+	error:
+		throwException(env, EX_IO, strerror(errno));
+		return -1;
 }
 
 /*
