@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/12/07 12:13:16  mpf
+ * - more cleaning up
+ *
  * Revision 1.1  1999/12/07 08:19:23  mpf
  * - Initial import.
  *
@@ -30,10 +33,10 @@
 import java.net.*;
 import java.io.*;
 
-public class PSITest2 {
+public class PSITestServer {
     public static void main(String[] args) throws IOException {
 
-		int port = 2007;
+		int port = 27000;
 		int backlog = 5;
 		InetAddress localAddress = null;
 		boolean doLocalBind = false;

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * PSITest.java - A Test Harness for "client" side of TCP client/server.
+ * PSITestClient.java - A Test Harness for "client" side of TCP client/server.
  * Copyright (C) 1999 Matthew Flanagan. All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/12/07 12:12:50  mpf
+ * - more cleaning up
+ *
  * Revision 1.2  1999/12/07 08:18:57  mpf
  * - Moved common code to SendRecvData() method.
  * - Made test non-interactive.
@@ -36,7 +39,7 @@
 import java.io.*;
 import java.net.*;
 
-public class PSITest {
+public class PSITestClient {
 	public static void main(String[] args) throws IOException {
 		Socket s = null;
 		String remoteAddress = null;
@@ -45,7 +48,7 @@ public class PSITest {
 		int remotePort = 0;
 
 		if (args.length < 4) {
-			System.out.println("Usage: PSITest <remote address> <remote port> <local address> <local port>");
+			System.out.println("Usage: PSITestClient <remote address> <remote port> <local address> <local port>");
 			System.exit(1);
 		} else {
 			remoteAddress = new String(args[0]);
@@ -55,7 +58,7 @@ public class PSITest {
 		}
 
 		try {
-			System.out.print("TEST: Connecting to: " + remoteAddress + " port "+ remotePort+": ");
+			System.out.print("\nTEST: Connecting to: " + remoteAddress + " port "+ remotePort+": ");
 			s = new Socket(remoteAddress, remotePort);
 			SendRecvData(s);
 			s.close();
@@ -65,7 +68,7 @@ public class PSITest {
 		}
 	
 		try {
-			System.out.print("\nTEST: Connecting to InetAddress(): " + remoteAddress + " port "+remotePort+": ");
+			System.out.print("TEST: Connecting to InetAddress(): " + remoteAddress + " port "+remotePort+": ");
 			s = new Socket(InetAddress.getByName(remoteAddress), remotePort);
 			SendRecvData(s);
 			s.close();
@@ -78,7 +81,7 @@ public class PSITest {
 		}
 
 		try {
-			System.out.print("\nTEST: Connecting to " + remoteAddress + " port "+remotePort+" from "
+			System.out.print("TEST: Connecting to " + remoteAddress + " port "+remotePort+" from "
 								+ localAddress + " port " + localPort +": ");
 			s = new Socket(remoteAddress,remotePort, InetAddress.getByName(localAddress), localPort);
 			SendRecvData(s);
@@ -93,7 +96,7 @@ public class PSITest {
 		
 	
 		try {
-			System.out.print("\nTEST: Connecting to InetAddress(): " + remoteAddress + " port "+remotePort+" from "
+			System.out.print("TEST: Connecting to InetAddress(): " + remoteAddress + " port "+remotePort+" from "
 								+ localAddress + " port " + (localPort+5)+": ");
 			s = new Socket(InetAddress.getByName(remoteAddress),remotePort, InetAddress.getByName(localAddress),localPort+5);
 			SendRecvData(s);
