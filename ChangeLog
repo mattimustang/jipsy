@@ -1,5 +1,8 @@
 $Id$
 
+release 0.2.1 Mon Aug 28 2000
+	- Oops, fixed missing argument names in PlainDatagramSocketImpl.c.
+
 release 0.2.0 Mon Aug 28 2000
 	- Added support for Java2.
 
