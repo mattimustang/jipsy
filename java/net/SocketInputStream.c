@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  2000/08/28 06:06:41  mpf
+ * - Added init() native method stubs.
+ *
  * Revision 1.3  1999/11/07 03:29:33  mpf
  * - Updated after rename of file(s).
  *
@@ -82,4 +85,11 @@ JNIEXPORT jint JNICALL Java_java_net_SocketInputStream_socketRead
 	printf("NATIVE: SocketInputStream.socketRead() returning\n");
 #endif
 	return n;
+}
+
+JNIEXPORT void JNICALL Java_java_net_SocketInputStream_init
+  (JNIEnv *env, jobject this)
+
+{
+	return;
 }

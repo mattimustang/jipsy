@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  2000/08/28 06:06:41  mpf
+ * - Added init() native method stubs.
+ *
  * Revision 1.3  1999/11/07 03:29:33  mpf
  * - Updated after rename of file(s).
  *
@@ -65,5 +68,10 @@ JNIEXPORT void JNICALL Java_java_net_SocketOutputStream_socketWrite
 
 	if (write(sockfd, bytes, length) != length)
 		throwException(env, EX_IO, strerror(errno));
+	return;
+}
+JNIEXPORT void JNICALL Java_java_net_SocketOutputStream_init
+  (JNIEnv *env, jobject this)
+{
 	return;
 }
