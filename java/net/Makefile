@@ -2,10 +2,22 @@
 # $Id$
 #
 # This is a comment
-#OS=solaris
-OS=linux
 
-SRCDIR=/home/mpf/project
+#  Defines for LINUX/ppc
+OS			= linux
+JNI_INCLUDE	= linux
+ARCH		= ppc
+
+# some definitions for Linux/i386 Uncomment to compile for this platform
+#JNI_INCLUDE	= genunix
+#ARCH		= intel
+
+#Uncomment the follwing lines to build on Solaris/sparc
+#OS			= solaris
+#JNI_INCLUDE	= solaris
+#ARCH		= sparc
+
+SRCDIR=../..
 
 JAVAC		= javac
 JAVA		= java
@@ -15,11 +27,14 @@ JAVADIR		= /usr/java
 
 CC			= gcc
 INCLUDES	= -I$(SRCDIR)/include -I$(JAVADIR)/include \
-				-I$(JAVADIR)/include/$(OS)
-CFLAGS		= -g -O2 -Wall $(INCLUDES)
+				-I$(JAVADIR)/include/$(JNI_INCLUDE)
+DEBUG		=
+#DEBUG		=
+#DEBUG		= 
+CFLAGS		= -g -O2 -Wall $(DEBUG) $(INCLUDES)
 LDFLAGS		= -shared
 
-DESTLIB		= libnet6.so
+DESTLIB		= ../../lib/$(OS)/$(ARCH)/libnet6.so
 
 JAVASRC		= $(wildcard *.java)
 CSRC		= $(wildcard *.c)
