@@ -9,6 +9,22 @@ extern "C" {
 #endif
 /*
  * Class:     java_net_PlainSocketImpl
+ * Method:    setOption
+ * Signature: (ILjava/lang/Object;)V
+ */
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_setOption
+  (JNIEnv *, jobject, jint, jobject);
+
+/*
+ * Class:     java_net_PlainSocketImpl
+ * Method:    getOption
+ * Signature: (I)Ljava/lang/Object;
+ */
+JNIEXPORT jobject JNICALL Java_java_net_PlainSocketImpl_getOption
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     java_net_PlainSocketImpl
  * Method:    bind
  * Signature: (Ljava/net/InetAddress;I)V
  */
@@ -62,22 +78,6 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketConnect
  */
 JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketClose
   (JNIEnv *, jobject);
-
-/*
- * Class:     java_net_PlainSocketImpl
- * Method:    socketGetOption
- * Signature: (I)Ljava/lang/Object;
- */
-JNIEXPORT jobject JNICALL Java_java_net_PlainSocketImpl_socketGetOption
-  (JNIEnv *, jobject, jint);
-
-/*
- * Class:     java_net_PlainSocketImpl
- * Method:    socketSetOption
- * Signature: (ILjava/lang/Object;)V
- */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketSetOption
-  (JNIEnv *, jobject, jint, jobject);
 
 #ifdef __cplusplus
 }
