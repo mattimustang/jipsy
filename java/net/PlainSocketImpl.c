@@ -4,7 +4,7 @@
  * PlainSocketImpl.c - The native functions for the  IPv6 capable version of
  *                     the PlainSocketImpl class.
  *
- * Copyright (C) 1999 Matthew Flanagan.
+ * Copyright (C) 1999 Matthew Flanagan. All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,11 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.6  1999/11/08 13:39:18  mpf
+ * - Added IPv4 address mapping in bind().
+ * - Added timeout code in accept().
+ * - General code clean up.
+ *
  * Revision 1.5  1999/11/07 05:57:01  mpf
  * - Modified available() to use ioctl() and FIONREAD in preference to
  *   select() because of problems with select() when the read-half of the
@@ -71,14 +76,10 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 	jbyte *addrBytes = NULL;
 	jbyteArray addrByteArray;
 	int addrlen = 0;
-	int len = sizeof(ss);
 
 	int sockfd = getSocketFileDescriptor(env, this);
 	int sockfamily = getSocketFamily(sockfd);
 
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.bind(): entering sockfamily = %d\n", sockfamily);
-#endif
 	/* if host is not null then bind to the supplied address */
 	if (host != NULL)  {
 		jclass hostClass = (*env)->GetObjectClass(env, host);
@@ -91,10 +92,19 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 	memset(&ss, 0, sizeof(ss));
 	/* were given an IPv4 address */
 	if (addrlen == IPV4_ADDRLEN) {
-		sin = (struct sockaddr_in *)&ss;
-		sin->sin_family = AF_INET;
-		memcpy(&sin->sin_addr, addrBytes, addrlen);
-		sin->sin_port = htons(port);
+		if (sockfamily == AF_INET) {
+			sin = (struct sockaddr_in *)&ss;
+			sin->sin_family = AF_INET;
+			memcpy(&sin->sin_addr, addrBytes, addrlen);
+			sin->sin_port = htons(port);
+		} else if (sockfamily == AF_INET6) {
+			sin6 = (struct sockaddr_in6 *)&ss;
+			sin6->sin6_family = AF_INET6;
+			/* convert IPv4 address to IPv4-mapped IPv6 address */
+			CREATE_IPV6_MAPPED(sin6->sin6_addr, addrBytes);
+			sin6->sin6_port = htons(port);
+			
+		}
 
 	/* an IPv6 address */
 	} else if (addrlen == IPV6_ADDRLEN) {
@@ -108,8 +118,8 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 		goto error;
 	}
 
-	len = SA_LEN((struct sockaddr *)&ss);
-	if (bind(sockfd, (struct sockaddr *)&ss, len) == 0) {
+	addrlen = SA_LEN((struct sockaddr *)&ss);
+	if (bind(sockfd, (struct sockaddr *)&ss, addrlen) == 0) {
 		jint lport;
 		jclass thisClass = (*env)->GetObjectClass(env, this);
 
@@ -119,35 +129,23 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 		/* get the this.localport field */
 		jfieldID localportID = (*env)->GetFieldID(env, thisClass, "localport", "I");
 
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.bind() succeeded\n");
-#endif
 		/* set this.address to host */
 		(*env)->SetObjectField(env, this, addrID, host);
 
 		if (port != 0) {
 			/* set this.localport to port */
 			lport = port;
-		} else if ((getsockname(sockfd, (struct sockaddr *)&ss, &len)) == 0) {
+		} else if ((getsockname(sockfd, (struct sockaddr *)&ss, &addrlen)) == 0) {
 			/* set this.localport to ss.sin_port */
 			lport = ntohs(getSockAddrPort(&ss));
 		} else {
 			goto error;
 		}
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.bind(): localport = %d\n", lport);
-#endif
 		(*env)->SetIntField(env, this, localportID, lport);
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.bind(): returning\n");
-#endif
 		return;
 
 	}
 	error:
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.bind(): throwing errno = %d\n", errno);
-#endif
 		throwException(env, EX_BIND, strerror(errno));
 		return;
 }
@@ -184,22 +182,45 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 {
 	struct sockaddr_storage ss;
 	socklen_t addrlen = sizeof(ss);
-	int newsockfd;
+	int sockfd, newsockfd;
 	jbyteArray remoteAddress;
 	jbyte *remoteAddressBytes;
 
 	jclass implClass, thisClass, inetClass, fdClass;
-	jfieldID localportID, portID, addressID, fdID, fdfdID;
+	jfieldID timeoutID, localportID, portID, addressID, fdID, fdfdID;
 	jfieldID thisLocalportID;
-	jint remotePort, thisLocalport;
+	jint timeout, remotePort, thisLocalport;
 	jobject newInetAddress, newfd;
 	jmethodID inetMethod, fdMethod;
 	
-	int sockfd = getSocketFileDescriptor(env, this);
 
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.accept(): entering\n");
 #endif
+	sockfd = getSocketFileDescriptor(env, this);
+
+	thisClass = (*env)->GetObjectClass(env, this);
+	timeoutID = (*env)->GetFieldID(env, thisClass, "timeout", "I");
+	timeout = (*env)->GetIntField(env, this, timeoutID);
+
+	/* use select to do accept timeout */
+	if (timeout > 0) {
+		fd_set rset;
+		struct timeval tv;
+		int rc;
+
+		FD_ZERO(&rset);
+		FD_SET(sockfd, &rset);
+		tv.tv_sec = timeout / 1000;
+		tv.tv_usec = (timeout % 1000) * 1000;
+		if ((rc = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
+			goto error;
+		else if (rc == 0) {
+			throwException(env, EX_INT_IO, "Accept timed out");
+			return;
+		}
+    }
+
 	newsockfd = accept(sockfd, (struct sockaddr *)&ss, &addrlen);
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.accept(): newsockfd = %d\n", newsockfd);
@@ -208,7 +229,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 	if (newsockfd < 0)
 		goto error;
 
-	switch (ss.__ss_family) {
+	switch (SS_FAMILY(&ss)) {
 		case AF_INET: {
 			struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
 			remoteAddress = (*env)->NewByteArray(env, IPV4_ADDRLEN);
@@ -243,7 +264,6 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 	/*(*env)->SetIntField(env, impl, sockfdID, sock);*/
 	
 	/* impl.localport = this.localport; */
-	thisClass = (*env)->GetObjectClass(env, this);
 	thisLocalportID = (*env)->GetFieldID(env, thisClass, "localport", "I");
 	thisLocalport = (*env)->GetIntField(env, this, thisLocalportID);
 	(*env)->SetIntField(env, impl, localportID, thisLocalport);
@@ -301,7 +321,6 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketConnect
 	jbyte *addrBytes = NULL;
 	jbyteArray addrByteArray;
 	int addrlen = 0;
-	socklen_t len = 0;
 	int sockfamily;
 
 	int sockfd = getSocketFileDescriptor(env, this);
@@ -326,23 +345,16 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketConnect
 			sin->sin_family = AF_INET;
 			memcpy(&sin->sin_addr, addrBytes, addrlen);
 			sin->sin_port = htons(port);
-			len = sizeof(struct sockaddr_in);
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.socketConnect(): got IPv4 && AF_INET\n");
 #endif
 		} else if (sockfamily == AF_INET6) {
 			
-			struct in6_addr *in6;
 			sin6 = (struct sockaddr_in6 *)&ss;
-			in6 = &sin6->sin6_addr;
 			sin6->sin6_family = AF_INET6;
 			/* convert IPv4 address to IPv4-mapped IPv6 address */
-			in6->s6_addr32[0] = 0;
-			in6->s6_addr32[1] = 0;
-			in6->s6_addr32[2] = htonl(0xffff);
-			memcpy(&in6->s6_addr32[3], addrBytes, addrlen);
+			CREATE_IPV6_MAPPED(sin6->sin6_addr, addrBytes);
 			sin6->sin6_port = htons(port);
-			len = sizeof(struct sockaddr_in6);
 		}
 
 	/* an IPv6 address */
@@ -352,18 +364,15 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketConnect
 			sin6->sin6_family = AF_INET6;
 			memcpy(&sin6->sin6_addr, addrBytes, addrlen);
 			sin6->sin6_port = htons(port);
-			len = sizeof(struct sockaddr_in6);
 		}
 
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.socketConnect(): got IPv6 address\n");
-#endif
 	} else if (addrlen == 0 && host != NULL) {
 		errno = EINVAL;
 		goto error;
 	}
 
-	if ((connect(sockfd, (struct sockaddr *)&ss, len)) == 0) {
+	addrlen = SA_LEN((struct sockaddr *)&ss);
+	if ((connect(sockfd, (struct sockaddr *)&ss, addrlen)) == 0) {
 		jint remoteport;
 		jclass thisClass;
 		jfieldID addrID, portID;
@@ -387,7 +396,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketConnect
 		if (port != 0) {
 			/* set this.localport to port */
 			remoteport = port;
-		} else if ((getsockname(sockfd, (struct sockaddr *)&ss, &len)) == 0) {
+		} else if ((getsockname(sockfd, (struct sockaddr *)&ss, &addrlen)) == 0) {
 			/* set this.localport to ss.sin_port */
 			remoteport = ntohs(getSockAddrPort(&ss));
 		} else {
@@ -433,9 +442,6 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketCreate
 	hints.ai_flags = AI_PASSIVE;
 	hints.ai_socktype = stream ? SOCK_STREAM : SOCK_DGRAM;
 
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.socketCreate(): calling getaddrinfo()\n");
-#endif
 	err = getaddrinfo(HOST_NULL, SERV_ZERO, &hints, &res);
 	if (err) {
 		throwException(env, EX_IO, gai_strerror(err));
@@ -535,9 +541,6 @@ JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_available
 		tv.tv_usec = 0;
 
 		nbits = select (sockfd + 1, &rset, NULL, NULL, &tv);
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.available(): returning %d\n", nbits);
-#endif
 		if (nbits < 0)
 			goto error;
 		return ((nbits == 0) ? 0 : 1);
@@ -576,7 +579,7 @@ JNIEXPORT jobject JNICALL Java_java_net_PlainSocketImpl_getOption
 	boolClass = (*env)->FindClass(env, "java/lang/Boolean");
 	boolMethod = (*env)->GetMethodID(env, boolClass, "<init>", "(Z)V");
 	intClass = (*env)->FindClass(env, "java/lang/Integer");
-	intMethod = (*env)->GetMethodID(env, boolClass, "<init>", "(I)V");
+	intMethod = (*env)->GetMethodID(env, intClass, "<init>", "(I)V");
 
 	switch (opt) {
 		case J_TCP_NODELAY:
@@ -601,7 +604,6 @@ JNIEXPORT jobject JNICALL Java_java_net_PlainSocketImpl_getOption
 		case J_SO_BINDADDR: {
 			jbyteArray addrArray;
 			jbyte *addrBytes;
-			jobject addrObj;
 			jclass addrClass;
 			jmethodID addrMethod;
 
@@ -610,7 +612,7 @@ JNIEXPORT jobject JNICALL Java_java_net_PlainSocketImpl_getOption
 				goto error;
 
 			/* find out the address family and copy it's address */
-			switch (ss.__ss_family) {
+			switch (SS_FAMILY(&ss)) {
 				case AF_INET: {
 					struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
 					addrArray = (*env)->NewByteArray(env, IPV4_ADDRLEN);
@@ -634,8 +636,7 @@ JNIEXPORT jobject JNICALL Java_java_net_PlainSocketImpl_getOption
 			/* now create a new InetAddress and return it */
 			addrClass = (*env)->FindClass(env, "java/net/InetAddress");
 			addrMethod = (*env)->GetMethodID(env, addrClass, "<init>", "(Ljava/lang/String;[B)V");
-			addrObj = (*env)->NewObject(env, addrClass, NULL, addrArray);
-			return addrObj;	
+			return (*env)->NewObject(env, addrClass, NULL, addrArray);
 		}
 		case J_SO_TIMEOUT: {
 			jclass thisClass = (*env)->GetObjectClass(env, this);
@@ -666,12 +667,13 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_setOption
 {
 	int value, sockfd;
 	int valueLength = sizeof(value);
-	jclass boolClass;
+	jclass boolClass, intClass;
 
 
 	sockfd = getSocketFileDescriptor(env, this);
 
 	boolClass = (*env)->FindClass(env, "java/lang/Boolean");
+	intClass = (*env)->FindClass(env, "java/lang/Integer");
 
 	if ((*env)->IsInstanceOf(env, val, boolClass)) {
 		jmethodID boolMethod = (*env)->GetMethodID(env, boolClass, "booleanValue", "()Z");
@@ -680,19 +682,18 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_setOption
 			value = 1;
 		else
 			value = 0;
-	} else {
-		/* FIXME: do stricter type checking */
-		/* assume that val is an Integer */
-		jclass intClass = (*env)->GetObjectClass(env, val);
+	} else if ((*env)->IsInstanceOf(env, val, intClass)) {
 		jmethodID intMethod = (*env)->GetMethodID(env, intClass, "intValue", "()I");
 		value = (*env)->CallIntMethod(env, val, intMethod);
+	} else {
+		throwException(env, EX_ILLEGAL_ARG, "");
+		return;
 	}
-
 	
 	switch (opt) {
 		case J_TCP_NODELAY:
 			if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char *) &value, valueLength) != 0)
-			goto error;
+				goto error;
 			return;
 		case J_SO_LINGER: {
 			struct linger l;
