@@ -1,14 +1,21 @@
-
+#
+# $Id$
+#
 # This is a comment
 #OS=solaris
-#OS=linux
+OS=linux
+
+SRCDIR=/home/mpf/project
 
 JAVAC		= javac
 JAVA		= java
 JAVAH		= javah
+JAVADIR		= /usr/java
+
 
 CC			= gcc
-INCLUDES	= -I/usr/java/include -I/usr/java/include/linux
+INCLUDES	= -I$(SRCDIR)/include -I$(JAVADIR)/include \
+				-I$(JAVADIR)/include/$(OS)
 CFLAGS		= -g -O2 -Wall $(INCLUDES)
 LDFLAGS		= -shared
 
@@ -17,9 +24,9 @@ DESTLIB		= libnet6.so
 JAVASRC		= $(wildcard *.java)
 CSRC		= $(wildcard *.c)
 OBJS		= $(patsubst %.c,%.o,$(wildcard $(CSRC)))
-HEADERS		= $(patsubst %.java,%.h,$(wildcard $(JAVASRC)))
+HEADERS		= $(patsubst %.c,%.h,$(wildcard $(CSRC))) net6.h
 CLASSES		= $(patsubst %.java,%.class,$(wildcard $(JAVASRC)))
-CLASS		:= $(patsubst %.class,% ,$(wildcard $(CLASSES)))
+CLASS		= $(patsubst %.java,% ,$(wildcard $(JAVASRC)))
 
 %.class: %.java
 	$(JAVAC) $<
@@ -37,8 +44,8 @@ classes: $(CLASSES)
 $(CLASS): $(JAVASRC)
 
 .PHONY: $(CLASS)
-jni: $(CLASSES)
-	$(JAVAH) -jni $(patsubst %.class,java.net.%,$<)
+jni: $(CLASS)
+	$(JAVAH) -jni -o $(SRCDIR)/include/$<.h java.net.$<
 
 
 
@@ -46,4 +53,4 @@ test:
 	$(JAVA) test.InetAddressTest
 
 clean:
-	rm -f $(CLASSES) $(OBJS) $(HEADERS) $(DESTLIB)
+	rm -f $(CLASSES) $(OBJS) $(DESTLIB)
