@@ -23,6 +23,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/10/20 22:55:53  mpf
+ * - Cleaned up #includes and moved them all to net6.h.
+ *
  * Revision 1.2  1999/10/20 07:39:12  mpf
  * - Added CVS Id and Log tags.
  * - Added LGPL license header.
@@ -31,14 +34,8 @@
  *
  */
 
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <jni.h>
-#include "java_net_InetAddress.h"
 #include "net6.h"
+#include "java_net_InetAddress.h"
 
 
 /*
