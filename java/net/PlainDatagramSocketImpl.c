@@ -20,12 +20,17 @@
  *
  * Change Log:
  *
- * $Log
+ * $Log$
+ * Revision 1.2  1999/11/08 13:36:45  mpf
+ * - Added join(), leave(), setTTL(), getTTL(), setOption() and getOption().
+ * - General code clean up.
+ *
  *
  */
 
 #include <net6.h>
 #include <PlainDatagramSocketImpl.h>
+
 /*
  * Class:     java_net_PlainDatagramSocketImpl
  * Method:    bind
@@ -65,15 +70,10 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_bind
 			memcpy(&sin->sin_addr, addrBytes, addrlen);
 			sin->sin_port = htons(port);
 		} else if (sockfamily == AF_INET6) {
-			struct in6_addr *in6;
 			sin6 = (struct sockaddr_in6 *)&ss;
-			in6 = &sin6->sin6_addr;
 			sin6->sin6_family = AF_INET6;
 			/* convert IPv4 address to IPv4-mapped IPv6 address */
-			in6->s6_addr32[0] = 0;
-			in6->s6_addr32[1] = 0;
-			in6->s6_addr32[2] = htonl(0xffff);
-			memcpy(&in6->s6_addr32[3], addrBytes, addrlen);
+			CREATE_IPV6_MAPPED(sin6->sin6_addr, addrBytes);
 			sin6->sin6_port = htons(port);
 		}
 
@@ -97,9 +97,6 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_bind
 		/* get the this.localport field */
 		jfieldID localportID = (*env)->GetFieldID(env, thisClass, "localPort", "I");
 
-#ifdef DEBUG
-	printf("NATIVE: PlainDatagramSocketImpl.bind() succeeded\n");
-#endif
 
 		if (port != 0) {
 			/* set this.localport to port */
@@ -110,20 +107,11 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_bind
 		} else {
 			goto error;
 		}
-#ifdef DEBUG
-	printf("NATIVE: PlainDatagramSocketImpl.bind(): localPort = %d\n", lport);
-#endif
 		(*env)->SetIntField(env, this, localportID, lport);
-#ifdef DEBUG
-	printf("NATIVE: PlainDatagramSocketImpl.bind(): returning\n");
-#endif
 		return;
 
 	}
 	error:
-#ifdef DEBUG
-	printf("NATIVE: PlainDatagramSocketImpl.bind(): throwing errno = %d\n", errno);
-#endif
 		throwException(env, EX_BIND, strerror(errno));
 		return;
 
@@ -190,15 +178,10 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_send
 			memcpy(&sin->sin_addr, addrBytes, addrlen);
 			sin->sin_port = htons(port);
 		} else if (sockfamily == AF_INET6) {
-			struct in6_addr *in6;
 			sin6 = (struct sockaddr_in6 *)&ss;
-			in6 = &sin6->sin6_addr;
 			sin6->sin6_family = AF_INET6;
 			/* convert IPv4 address to IPv4-mapped IPv6 address */
-			in6->s6_addr32[0] = 0;
-			in6->s6_addr32[1] = 0;
-			in6->s6_addr32[2] = htonl(0xffff);
-			memcpy(&in6->s6_addr32[3], addrBytes, addrlen);
+			CREATE_IPV6_MAPPED(sin6->sin6_addr, addrBytes);
 			sin6->sin6_port = htons(port);
 		}
 
@@ -218,9 +201,10 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_send
 	}
 
 	addrlen = SA_LEN((struct sockaddr *)&ss);
-#ifdef DEBUG
-	printf("NATIVE: PlainDatagramSocketImpl.send(): calling sendto dataLength = %d\n", dataLength);
-#endif
+
+	/* send the data if an error occurs then it falls through to the
+     * throw below
+	 */
 	if (sendto(sockfd, (char *)dataBytes, dataLength, 0, (struct sockaddr *)&ss, addrlen) >= 0)
 		return;
 	error:
@@ -252,7 +236,7 @@ JNIEXPORT jint JNICALL Java_java_net_PlainDatagramSocketImpl_peek
 	if (recvlen < 0)
 		goto error;
 
-	switch (ss.__ss_family) {
+	switch (SS_FAMILY(&ss)) {
 		case AF_INET: {
 			struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
 			remoteAddress = (*env)->NewByteArray(env, IPV4_ADDRLEN);
@@ -264,11 +248,27 @@ JNIEXPORT jint JNICALL Java_java_net_PlainDatagramSocketImpl_peek
 		}
 		case AF_INET6: {
 			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
+			remotePort = ntohs(sin6->sin6_port);
 			remoteAddress = (*env)->NewByteArray(env, IPV6_ADDRLEN);
 			remoteAddressBytes = (*env)->GetByteArrayElements(env, remoteAddress, NULL);
 			memcpy(remoteAddressBytes, &(sin6->sin6_addr), IPV6_ADDRLEN);
 			(*env)->SetByteArrayRegion(env, remoteAddress, 0, IPV6_ADDRLEN, remoteAddressBytes);
-			remotePort = ntohs(sin6->sin6_port);
+			/*
+			 * if the DatagramPacket was created with an IPv4 address then
+			 * we have to map it back to one when we return it.
+			 */
+			if (IN6_IS_ADDR_V4MAPPED(sin6->sin6_addr.s6_addr32)) {
+				remoteAddress = (*env)->NewByteArray(env, IPV4_ADDRLEN);
+				remoteAddressBytes = (*env)->GetByteArrayElements(env, remoteAddress, NULL);
+				memcpy(remoteAddressBytes, &sin6->sin6_addr.s6_addr32[3], IPV4_ADDRLEN);
+				(*env)->SetByteArrayRegion(env, remoteAddress, 0, IPV4_ADDRLEN, remoteAddressBytes);
+			} else {
+				remoteAddress = (*env)->NewByteArray(env, IPV6_ADDRLEN);
+				remoteAddressBytes = (*env)->GetByteArrayElements(env, remoteAddress, NULL);
+				memcpy(remoteAddressBytes, &sin6->sin6_addr, IPV6_ADDRLEN);
+				(*env)->SetByteArrayRegion(env, remoteAddress, 0, IPV6_ADDRLEN, remoteAddressBytes);
+			}
+
 			break;
 		}
 		default:
@@ -305,8 +305,8 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_receive
 	ssize_t recvlen;
 	socklen_t addrlen = sizeof(ss);
 	jint dataLength, remotePort;
-	jbyte *dataBytes, *addrBytes;
-	jbyteArray dataArray, addrArray;
+	jbyte *dataBytes, *remoteAddressBytes;
+	jbyteArray dataArray, remoteAddress;
 	jmethodID portMethod, dataMethod, lengthMethod, addrMethod, inetMethod;
 	jobject inetObj;
 	jclass packetClass, inetClass;
@@ -348,14 +348,14 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_receive
 	printf("NATIVE: PlainDatagramSocketImpl.receive(): calling recvfrom\n" );
 #endif
 
-	switch (ss.__ss_family) {
+	switch (SS_FAMILY(&ss)) {
 		case AF_INET: {
 			struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
 			remotePort = ntohs(sin->sin_port);
-			addrArray = (*env)->NewByteArray(env, IPV4_ADDRLEN);
-			addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
-			memcpy(addrBytes, &sin->sin_addr, IPV4_ADDRLEN);
-			(*env)->SetByteArrayRegion(env, addrArray, 0, IPV4_ADDRLEN, addrBytes);
+			remoteAddress = (*env)->NewByteArray(env, IPV4_ADDRLEN);
+			remoteAddressBytes = (*env)->GetByteArrayElements(env, remoteAddress, NULL);
+			memcpy(remoteAddressBytes, &sin->sin_addr, IPV4_ADDRLEN);
+			(*env)->SetByteArrayRegion(env, remoteAddress, 0, IPV4_ADDRLEN, remoteAddressBytes);
 			break;
 		}
 		case AF_INET6: {
@@ -366,27 +366,27 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_receive
 			 * we have to map it back to one when we return it.
 			 */
 			if (IN6_IS_ADDR_V4MAPPED(sin6->sin6_addr.s6_addr32)) {
-				addrArray = (*env)->NewByteArray(env, IPV4_ADDRLEN);
-				addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
-				memcpy(addrBytes, &sin6->sin6_addr.s6_addr32[3], IPV4_ADDRLEN);
-				(*env)->SetByteArrayRegion(env, addrArray, 0, IPV4_ADDRLEN, addrBytes);
+				remoteAddress = (*env)->NewByteArray(env, IPV4_ADDRLEN);
+				remoteAddressBytes = (*env)->GetByteArrayElements(env, remoteAddress, NULL);
+				memcpy(remoteAddressBytes, &sin6->sin6_addr.s6_addr32[3], IPV4_ADDRLEN);
+				(*env)->SetByteArrayRegion(env, remoteAddress, 0, IPV4_ADDRLEN, remoteAddressBytes);
 			} else {
-				addrArray = (*env)->NewByteArray(env, IPV6_ADDRLEN);
-				addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
-				memcpy(addrBytes, &sin6->sin6_addr, IPV6_ADDRLEN);
-				(*env)->SetByteArrayRegion(env, addrArray, 0, IPV6_ADDRLEN, addrBytes);
+				remoteAddress = (*env)->NewByteArray(env, IPV6_ADDRLEN);
+				remoteAddressBytes = (*env)->GetByteArrayElements(env, remoteAddress, NULL);
+				memcpy(remoteAddressBytes, &sin6->sin6_addr, IPV6_ADDRLEN);
+				(*env)->SetByteArrayRegion(env, remoteAddress, 0, IPV6_ADDRLEN, remoteAddressBytes);
 			}
 			break;
 		}
 		default:
 #ifdef DEBUG
-	printf("NATIVE: PlainDatagramSocketImpl.receive(): __ss_family = %d\n", ss.__ss_family );
+	printf("NATIVE: PlainDatagramSocketImpl.receive(): family = %d\n", SS_FAMILY(&ss));
 #endif
 			errno = EAFNOSUPPORT;
 			goto error;
 	}
 
-	inetObj = (*env)->NewObject(env, inetClass, inetMethod, NULL, addrArray);
+	inetObj = (*env)->NewObject(env, inetClass, inetMethod, NULL, remoteAddress);
 	(*env)->CallVoidMethod(env, packet, addrMethod, inetObj);
 	(*env)->CallVoidMethod(env, packet, portMethod, remotePort);
 	(*env)->CallVoidMethod(env, packet, lengthMethod, recvlen);
@@ -405,6 +405,35 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_receive
 JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_setTTL
   (JNIEnv *env, jobject this, jbyte ttl)
 {
+	int sockfd, sockfamily;
+
+	sockfd = getSocketFileDescriptor(env, this);
+
+	sockfamily = getSocketFamily(sockfd);
+
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.setTTL() entering ttl = %d\n", ttl);
+#endif
+	switch (sockfamily)
+	{
+		case AF_INET:
+			if (setsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_TTL, (char *)&ttl, sizeof(ttl)) < 0)
+				goto error;
+			return;
+
+		case AF_INET6:
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (char *)&ttl, sizeof(ttl)) < 0)
+				goto error;
+			return;
+
+		default:
+			errno = EAFNOSUPPORT;
+			goto error;
+	}
+
+	error:
+		throwException(env, EX_IO, strerror(errno));
+		return;
 }
 
 /*
@@ -415,7 +444,42 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_setTTL
 JNIEXPORT jbyte JNICALL Java_java_net_PlainDatagramSocketImpl_getTTL
   (JNIEnv *env, jobject this)
 {
-	return (jbyte)NULL;
+	int sockfd, sockfamily;
+	jbyte ttl;
+	socklen_t ttlLength;
+
+	sockfd = getSocketFileDescriptor(env, this);
+	sockfamily = getSocketFamily(sockfd);
+
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.getTTL() entering sockfd = %d sockfamily = %d\n", sockfd, sockfamily);
+#endif
+	return 1;
+	switch (sockfamily)
+	{
+		case AF_INET:
+			if (getsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_TTL, (char *)&ttl, &ttlLength) < 0)
+				goto error;
+			break;
+
+		case AF_INET6:
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.getTTL() getsockopt()\n");
+#endif
+			if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (char *)&ttl, &ttlLength) < 0)
+				goto error;
+			break;
+
+		default:
+			errno = EAFNOSUPPORT;
+			goto error;
+	}
+			
+	return ttl;
+
+	error:
+		throwException(env, EX_IO, strerror(errno));
+		return (jbyte)NULL;
 }
 
 /*
@@ -426,6 +490,84 @@ JNIEXPORT jbyte JNICALL Java_java_net_PlainDatagramSocketImpl_getTTL
 JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_join
   (JNIEnv *env, jobject this, jobject addr)
 {
+	int sockfd, sockfamily;
+	jbyteArray addrArray;
+	jbyte *addrBytes = NULL;
+	jint addrlen = 0;
+
+	sockfd = getSocketFileDescriptor(env, this);
+	sockfamily = getSocketFamily(sockfd);
+
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramsocketImpl.join() entering sockfd = %d sockfamily = %d\n", sockfd, sockfamily);
+#endif
+	if (addr != NULL) {
+		jclass addrClass = (*env)->GetObjectClass(env, addr);
+		jfieldID addrID = (*env)->GetFieldID(env, addrClass, "address", "[B");
+		addrArray = (jbyteArray)(*env)->GetObjectField(env, addr, addrID);
+		addrlen = (*env)->GetArrayLength(env, addrArray);
+		addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
+	}
+
+	switch (addrlen) {
+		case IPV4_ADDRLEN: 
+			switch (sockfamily) {
+				case AF_INET: {
+					struct ip_mreq mreq;
+					memcpy(&mreq.imr_multiaddr, addrBytes, addrlen);
+					mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+					if (setsockopt(sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+									(char *)&mreq, sizeof(mreq)) < 0)
+						goto error;
+					return;
+				}
+/* this code has been removed for the moment because multicast IPv4 mapped
+ * IPv6 addresses are not supported.
+ *
+				case AF_INET6: {
+					struct ipv6_mreq mreq6;
+					struct in6_addr addr6;
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramsocketImpl.join() Mapping IPV4 -> IPv6\n");
+#endif
+					addr6.s6_addr32[0] = htonl(0xff0e0000);
+					addr6.s6_addr32[1] = 0;
+					addr6.s6_addr32[2] = htonl(0xffff);
+					memcpy(&addr6.s6_addr32[3], addrBytes, addrlen);
+
+					memcpy(&mreq6.ipv6mr_multiaddr, &addr6, IPV6_ADDRLEN);
+#ifdef DEBUG
+{
+	char buf[INET6_ADDRSTRLEN];
+
+	printf("NATIVE: PlainDatagramsocketImpl.join() mre6.ipv6_multiaddr = %s\n", inet_ntop(AF_INET6, &mreq6.ipv6mr_multiaddr, buf, sizeof(buf)));
+}
+#endif
+					mreq6.ipv6mr_interface = 0;
+					if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
+									(char *)&mreq6, sizeof(mreq6)) < 0)
+						goto error;
+					return;
+				}
+*/
+			}
+		case IPV6_ADDRLEN: {
+			struct ipv6_mreq mreq6;
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramsocketImpl.join() got IPV6 Multicast Addr\n");
+#endif
+			memcpy(&mreq6.ipv6mr_multiaddr, addrBytes, addrlen);
+			mreq6.ipv6mr_interface = 0;
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
+								(char *)&mreq6, sizeof(mreq6)) < 0)
+				goto error;
+			return;
+		}
+	}
+
+	error:
+		throwException(env, EX_IO, strerror(errno));
+		return;
 }
 
 /*
@@ -436,6 +578,67 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_join
 JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_leave
   (JNIEnv *env, jobject this, jobject addr)
 {
+	int sockfd, sockfamily;
+	jbyteArray addrArray;
+	jbyte *addrBytes;
+	jint addrlen = 0;
+
+	sockfd = getSocketFileDescriptor(env, this);
+	sockfamily = getSocketFamily(sockfd);
+
+	if (addr != NULL) {
+		jclass addrClass = (*env)->GetObjectClass(env, addr);
+		jfieldID addrID = (*env)->GetFieldID(env, addrClass, "address", "[B");
+		addrArray = (jbyteArray)(*env)->GetObjectField(env, addr, addrID);
+		addrlen = (*env)->GetArrayLength(env, addrArray);
+		addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
+	}
+
+	switch (addrlen) {
+		case IPV4_ADDRLEN: 
+			switch (sockfamily) {
+				case AF_INET: {
+					struct ip_mreq mreq;
+					memcpy(&mreq.imr_multiaddr, addrBytes, addrlen);
+					mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+					if (setsockopt(sockfd, IPPROTO_IP, IP_DROP_MEMBERSHIP,
+									&mreq, sizeof(mreq)) < 0)
+						goto error;
+					return;
+				}
+				/* removed because IPv6 does not support mapping multicast
+				 * IPv4 addresses.
+				case AF_INET6: {
+					struct ipv6_mreq mreq6;
+					struct in6_addr addr6;
+					addr6.s6_addr32[0] = 0;
+					addr6.s6_addr32[1] = 0;
+					addr6.s6_addr32[2] = htonl(0xffff);
+					memcpy(&addr6.s6_addr32[3], addrBytes, addrlen);
+
+					memcpy(&mreq6.ipv6mr_multiaddr, &addr6, IPV6_ADDRLEN);
+					mreq6.ipv6mr_interface = 0;
+					if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP,
+									&mreq6, sizeof(mreq6)) < 0)
+						goto error;
+					return;
+				}
+				*/
+			}
+		case IPV6_ADDRLEN: {
+			struct ipv6_mreq mreq6;
+			memcpy(&mreq6.ipv6mr_multiaddr, &addrBytes, addrlen);
+			mreq6.ipv6mr_interface = 0;
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP,
+								&mreq6, sizeof(mreq6)) < 0)
+				goto error;
+			return;
+		}
+	}
+
+	error:
+		throwException(env, EX_IO, strerror(errno));
+		return;
 }
 
 /*
@@ -446,6 +649,79 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_leave
 JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_setOption
   (JNIEnv *env, jobject this, jint opt, jobject val)
 {
+	int sockfd, sockfamily;
+	int value = 0;
+	jclass inetClass, intClass;
+
+	sockfd = getSocketFileDescriptor(env, this);
+	sockfamily = getSocketFamily(sockfd);
+
+	/* check to class of val before we proceed */
+	inetClass = (*env)->FindClass(env, "java/net/InetAddress");
+	intClass = (*env)->FindClass(env, "java/lang/Integer");
+
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.setOption() entering\n");
+#endif
+
+	if ((*env)->IsInstanceOf(env, val, inetClass)) {
+	} else if ((*env)->IsInstanceOf(env, val, intClass)) {
+		jmethodID intMethod = (*env)->GetMethodID(env, intClass, "intValue", "()I");
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.setOption() val is Integer\n");
+#endif
+		value = (*env)->CallIntMethod(env, val, intMethod);
+	} else {
+		throwException(env, EX_ILLEGAL_ARG, "Invalid Argument");
+		return;
+	}
+
+	switch (opt)
+	{
+		case J_SO_TIMEOUT: {
+			jclass thisClass = (*env)->GetObjectClass(env, this);
+			jfieldID timeoutID = (*env)->GetFieldID(env, thisClass, "timeout", "I");
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.setOption() opt = SO_TIMEOUT\n");
+#endif
+			if (value < 0) {
+				throwException(env, EX_SOCKET, "SO_TIMEOUT value less than zero");
+				return;
+			}
+
+			(*env)->SetIntField(env, this, timeoutID, value);
+			return;
+
+		}
+		case J_IP_MULTICAST_IF:
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.setOption() opt = IP_MULTICAST_IF\n");
+#endif
+			switch (sockfamily) {
+				case AF_INET:
+					break;
+				case AF_INET6:
+					break;
+				default:
+					errno = EAFNOSUPPORT;
+					goto error;
+			}
+		case J_SO_REUSEADDR: {
+			int on = 1;
+
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.setOption() opt = SO_REUSEADDR\n");
+#endif
+			if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0)
+					goto error;
+			return;
+		}
+		default:
+			errno = ENOPROTOOPT;	
+	}
+	error:
+		throwException(env, EX_IO, strerror(errno));
+		return;
 }
 
 /*
@@ -456,7 +732,72 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_setOption
 JNIEXPORT jobject JNICALL Java_java_net_PlainDatagramSocketImpl_getOption
   (JNIEnv *env, jobject this, jint opt)
 {
-	return NULL;
+	struct sockaddr_storage ss;
+	int sockfd;
+	int ssLength = sizeof(ss);
+	jclass intClass;
+	jmethodID intMethod;
+	
+
+	sockfd = getSocketFileDescriptor(env, this);
+
+	intClass = (*env)->FindClass(env, "java/lang/Integer");
+	intMethod = (*env)->GetMethodID(env, intClass, "<init>", "(I)V");
+
+	switch (opt) {
+		case J_SO_BINDADDR: {
+			jbyteArray addrArray;
+			jbyte *addrBytes;
+			jclass addrClass;
+			jmethodID addrMethod;
+
+			/* get the socket's address structure */
+			if (getsockname(sockfd, (struct sockaddr *)&ss, &ssLength) != 0)
+				goto error;
+
+			/* find out the address family and copy it's address */
+			switch (SS_FAMILY(&ss)) {
+				case AF_INET: {
+					struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
+					addrArray = (*env)->NewByteArray(env, IPV4_ADDRLEN);
+					addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
+					memcpy(addrBytes, &sin->sin_addr, IPV4_ADDRLEN);
+					(*env)->SetByteArrayRegion(env, addrArray, 0, IPV4_ADDRLEN, addrBytes);
+					break;
+				}
+				case AF_INET6: {
+					struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
+					addrArray = (*env)->NewByteArray(env, IPV6_ADDRLEN);
+					addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
+					memcpy(addrBytes, &sin6->sin6_addr, IPV6_ADDRLEN);
+					(*env)->SetByteArrayRegion(env, addrArray, 0, IPV6_ADDRLEN, addrBytes);
+					break;
+				}
+				default:
+					errno = EAFNOSUPPORT;
+					goto error;
+			}
+			/* now create a new InetAddress and return it */
+			addrClass = (*env)->FindClass(env, "java/net/InetAddress");
+			addrMethod = (*env)->GetMethodID(env, addrClass, "<init>", "(Ljava/lang/String;[B)V");
+			return  (*env)->NewObject(env, addrClass, NULL, addrArray);
+		}
+		case J_IP_MULTICAST_IF:
+			/* FIXME: need to implement this */
+			return NULL;
+		case J_SO_TIMEOUT: {
+			jclass thisClass = (*env)->GetObjectClass(env, this);
+			jfieldID timeoutID = (*env)->GetFieldID(env, thisClass, "timeout", "I");
+			jint timeout = (*env)->GetIntField(env, this, timeoutID);
+
+			return (*env)->NewObject(env, intClass, intMethod, timeout);
+		}
+
+	}
+
+	error:
+		throwException(env, EX_SOCKET, strerror(errno));
+		return NULL;
 }
 
 /*
