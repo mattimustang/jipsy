@@ -23,6 +23,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.5  1999/10/26 18:28:23  mpf
+ * - Removed some of the more verbose debugging messages.
+ *
  * Revision 1.4  1999/10/26 17:16:57  mpf
  * - Fixed getLoopBackAddress().
  * - Added getAnyLocalAddress() native function implementation.
@@ -309,13 +312,7 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	 */
 	/*hints.ai_socktype = SOCK_STREAM;*/
 
-#ifdef DEBUG
-	printf("NATIVE: InetAddress.getAllHostAddresses(): getaddrinfo()\n");
-#endif
 	err = getaddrinfo(hostname, NULL, &hints, &res);
-#ifdef DEBUG
-	printf("NATIVE: InetAddress.getAllHostAddresses(): getaddrinfo() done\n");
-#endif
 
 	if (err) {
 		/* get a reference to the UnknownHostException */
@@ -324,9 +321,6 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 		if (uhe == 0)
 			return NULL;
 
-#ifdef DEBUG
-	printf("NATIVE: InetAddress.getAllHostAddresses(): getaddrinfo() error throwing\n");
-#endif
 		/* throw it */
 		(*env)->ThrowNew(env, uhe, gai_strerror(err));
 		return;
@@ -336,14 +330,8 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	reshead = res;
 	while (res != NULL) {
 		count++;
-#ifdef DEBUG
-	printf("NATIVE: getAllHostAddresses(): res->ai_family = %d\n", res->ai_family);
-#endif
 		res = res->ai_next;
 	}
-#ifdef DEBUG
-	printf("NATIVE: getAllHostAddresses(): gai returned %d addresses\n", count);
-#endif
 
 	/* allocate storage for addressArray */
 	byteArrayClass = (*env)->FindClass(env, "[B");
@@ -358,20 +346,10 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 		int addrlen;
 		switch (res->ai_family) {
 			case AF_INET:
-#ifdef DEBUG
-	printf("NATIVE: getAllHostAddresses(): res->ai_family == AF_INET\n");
-#endif
 				addressBytes = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
 				addrlen = 4;
-#ifdef DEBUG
-	printf("NATIVE: getAllHostAddresses(): res->ai_ai_addr = %s\n",
-			inet_ntoa(((struct sockaddr_in *)res->ai_addr)->sin_addr));
-#endif
 				break;
 			case AF_INET6:
-#ifdef DEBUG
-	printf("NATIVE: getAllHostAddresses(): res->ai_family == AF_INET6\n", count);
-#endif
 				addressBytes = (jbyte *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
 				addrlen = 16;
 				break;
