@@ -21,6 +21,12 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/10/27 14:39:13  mpf
+ * - Removed private copy of socket file descriptor fdnum.
+ * - Changed available() to be a native function
+ * - Change create() to java method that now creates a new File Descriptor
+ *   and calls the native function sockCreate().
+ *
  * Revision 1.1  1999/10/20 23:08:58  mpf
  * Initital Import.
  *
@@ -43,20 +49,17 @@ class PlainSocketImpl extends SocketImpl {
 	// timeout option get/set by getOption/setOption
 	int timeout = 0;
 	
-	// save some headaches with the native code by keeping our
-	// own copy of the file descriptor
-	private int fdnum = -1;
-	
-
 	static {
 		System.loadLibrary("net6");
-
-		/* still need this for things like socketWrite() */
-		System.loadLibrary("net");
 	}
 
 
-	protected native void create(boolean stream) throws IOException;
+	protected void create(boolean stream) throws IOException
+	{
+		fd = new FileDescriptor();
+		sockCreate(stream);
+	}
+	protected native void sockCreate(boolean stream) throws IOException;
 
 	protected void connect(String host, int port)
 		throws UnknownHostException, IOException {
@@ -84,7 +87,6 @@ class PlainSocketImpl extends SocketImpl {
 
 		this.address = host;
 		this.port = port;
-
 		sockConnect(host, port);
 	}
 
@@ -106,9 +108,7 @@ class PlainSocketImpl extends SocketImpl {
 			return new SocketOutputStream(this);
 	}
 
-	protected int available() throws IOException {
-		return sockAvailable();
-	}
+	protected native int available() throws IOException;
 
 	protected void close() throws IOException {
 		if (fd != null) {
@@ -123,7 +123,6 @@ class PlainSocketImpl extends SocketImpl {
 	}
 
 	public Object getOption(int opt) throws SocketException {
-
 		return null;
 	}
 
