@@ -21,6 +21,10 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/10/27 14:15:37  mpf
+ * - Changed anyLocalAddress field from private to public as it is used
+ *   by Socket.java when binding.
+ *
  * Revision 1.2  1999/10/26 17:14:54  mpf
  * - Fixed bug in equals() where it comparing addresses correctly.
  * - Added native call to getAnyLocalAddress() and anyLocalAddress field.
@@ -240,7 +244,7 @@ class InetAddress implements java.io.Serializable {
 
     private static InetAddress		localHost = null;
     private static InetAddress		loopbackHost;
-    private static InetAddress		anyLocalAddress;
+    static InetAddress		anyLocalAddress;
     //private static byte[]			loopbackAddress;
 
 
