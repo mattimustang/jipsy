@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * PSITest.java - A Test program for java.net.PlainsocketImpl.
+ * PSITest.java - A Test Harness for "client" side of TCP client/server.
  * Copyright (C) 1999 Matthew Flanagan. All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -21,143 +21,110 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/12/07 08:18:57  mpf
+ * - Moved common code to SendRecvData() method.
+ * - Made test non-interactive.
+ * - Cleaned up command line argument processing.
+ *
  * Revision 1.1  1999/12/04 09:23:32  mpf
  * - Added license.
  *
  *
  */
 
-package test;
+//package test;
 import java.io.*;
 import java.net.*;
 
 public class PSITest {
 	public static void main(String[] args) throws IOException {
 		Socket s = null;
-		PrintWriter out = null;
-		BufferedReader in = null;
-		int i;
+		String remoteAddress = null;
+		String localAddress = null;
+		int localPort = 0;
+		int remotePort = 0;
 
-
-		for (i = 0; i < 2; i++) {
-			try {
-				System.out.println("Connecting to: " + args[i] + " port 7");
-				s = new Socket(args[i], 7);
-				out = new PrintWriter(s.getOutputStream(), true);
-				in = new BufferedReader(new InputStreamReader(
-											s.getInputStream()));
-			} catch (UnknownHostException e) {
-				System.err.println("EchoClient: Couldn't get I/O for the connection to " + args[i]);
-				e.printStackTrace();
-				System.exit(1);
-			}
-	
-			BufferedReader stdIn = new BufferedReader(
-										new InputStreamReader(System.in));
-			String userInput;
-	
-			try {
-				while ((userInput = stdIn.readLine()) != null) {
-					out.println(userInput);
-					System.out.println("echo: " + in.readLine());
-				}
-			} catch (IOException ioe) {
-				out.close();
-				in.close();
-				stdIn.close();
-				s.close();
-			}
-		}
-		for (i = 0; i < 2; i++) {
-			try {
-				System.out.println("Connecting to InetAddress(): " + args[i] + " port 7");
-				s = new Socket(InetAddress.getByName(args[i]), 7);
-				out = new PrintWriter(s.getOutputStream(), true);
-				in = new BufferedReader(new InputStreamReader(
-											s.getInputStream()));
-			} catch (UnknownHostException e) {
-				System.err.println("EchoClient: Couldn't get I/O for the connection to " + args[i]);
-				e.printStackTrace();
-				System.exit(1);
-			}
-	
-			BufferedReader stdIn = new BufferedReader(
-										new InputStreamReader(System.in));
-			String userInput;
-	
-			try {
-				while ((userInput = stdIn.readLine()) != null) {
-					out.println(userInput);
-					System.out.println("echo: " + in.readLine());
-				}
-			} catch (IOException ioe) {
-				out.close();
-				in.close();
-				stdIn.close();
-				s.close();
-			}
+		if (args.length < 4) {
+			System.out.println("Usage: PSITest <remote address> <remote port> <local address> <local port>");
+			System.exit(1);
+		} else {
+			remoteAddress = new String(args[0]);
+			remotePort = Integer.parseInt(args[1]);
+			localAddress = new String(args[2]);
+			localPort = Integer.parseInt(args[3]);
 		}
 
-		for (i = 0; i < 2; i++) {
-			try {
-				System.out.println("Connecting to " + args[i] + " port 7 from "
-									+ args[i+2] + " port " + args[i+4] );
-				s = new Socket(args[i],7, InetAddress.getByName(args[i+2]), Integer.parseInt(args[i+4]));
-				out = new PrintWriter(s.getOutputStream(), true);
-				in = new BufferedReader(new InputStreamReader(
-											s.getInputStream()));
-			} catch (UnknownHostException e) {
-				System.err.println("EchoClient: Couldn't get I/O for the connection to " + args[i]);
-				e.printStackTrace();
-				System.exit(1);
-			}
-	
-			BufferedReader stdIn = new BufferedReader(
-										new InputStreamReader(System.in));
-			String userInput;
-	
-			try {
-				while ((userInput = stdIn.readLine()) != null) {
-					out.println(userInput);
-					System.out.println("echo: " + in.readLine());
-				}
-			} catch (IOException ioe) {
-				out.close();
-				in.close();
-				stdIn.close();
-				s.close();
-			}
+		try {
+			System.out.print("TEST: Connecting to: " + remoteAddress + " port "+ remotePort+": ");
+			s = new Socket(remoteAddress, remotePort);
+			SendRecvData(s);
+			s.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
 		}
-		for (i = 0; i < 2; i++) {
-			try {
-				System.out.println("Connecting to InetAddress()" + args[i] + " port 7 from "
-									+ args[i+2] + " port " + args[i+4] );
-				s = new Socket(InetAddress.getByName(args[i]),7, InetAddress.getByName(args[i+2]), Integer.parseInt(args[i+4])+2);
-				out = new PrintWriter(s.getOutputStream(), true);
-				in = new BufferedReader(new InputStreamReader(
-											s.getInputStream()));
-			} catch (UnknownHostException e) {
-				System.err.println("EchoClient: Couldn't get I/O for the connection to " + args[i]);
-				e.printStackTrace();
-				System.exit(1);
-			}
 	
-			BufferedReader stdIn = new BufferedReader(
-										new InputStreamReader(System.in));
-			String userInput;
-	
-			try {
-				while ((userInput = stdIn.readLine()) != null) {
-					out.println(userInput);
-					System.out.println("echo: " + in.readLine());
-				}
-			} catch (IOException ioe) {
-				out.close();
-				in.close();
-				stdIn.close();
-				s.close();
-			}
+		try {
+			System.out.print("\nTEST: Connecting to InetAddress(): " + remoteAddress + " port "+remotePort+": ");
+			s = new Socket(InetAddress.getByName(remoteAddress), remotePort);
+			SendRecvData(s);
+			s.close();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			System.exit(1);
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			System.exit(1);
+		}
+
+		try {
+			System.out.print("\nTEST: Connecting to " + remoteAddress + " port "+remotePort+" from "
+								+ localAddress + " port " + localPort +": ");
+			s = new Socket(remoteAddress,remotePort, InetAddress.getByName(localAddress), localPort);
+			SendRecvData(s);
+			s.close();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			System.exit(1);
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			System.exit(1);
 		}
 		
+	
+		try {
+			System.out.print("\nTEST: Connecting to InetAddress(): " + remoteAddress + " port "+remotePort+" from "
+								+ localAddress + " port " + (localPort+5)+": ");
+			s = new Socket(InetAddress.getByName(remoteAddress),remotePort, InetAddress.getByName(localAddress),localPort+5);
+			SendRecvData(s);
+			s.close();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			System.exit(1);
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+			System.exit(1);
+		}
+	}
+
+	public static void SendRecvData(Socket s) {
+		
+		try {
+			PrintWriter out = new PrintWriter(s.getOutputStream(), true);
+			BufferedReader in = new BufferedReader(new InputStreamReader(
+												s.getInputStream()));
+			String input = new String("abcdefghijklmnopqrstuvwxyz");
+
+			out.println(input);
+			String rcvd = in.readLine();
+			if (input.equals(rcvd)) {
+				System.out.println("PASSED");
+			} else {
+				System.out.println("FAILED");
+			}
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
+
 	}
 }
