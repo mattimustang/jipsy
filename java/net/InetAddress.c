@@ -23,6 +23,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.10  1999/12/06 07:03:10  mpf
+ * - Added #ifdef DEBUG around some code that was missing it.
+ *
  * Revision 1.9  1999/11/30 14:41:01  mpf
  * - Fixed bug in getAllHostAddresses() where the count would include
  *   addresses other than AF_INET* like AF_UNIX.
@@ -365,7 +368,9 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 		jbyte *addressBytes = NULL;
 		jbyteArray addressBytesArray;
 		int addrlen = 0;
+#ifdef DEBUG
 		char buf[INET6_ADDRSTRLEN];
+#endif
 		switch (res->ai_family) {
 			case AF_INET:
 				addressBytes = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
