@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  1999/11/03 22:28:50  mpf
+ * - Changed getOption() and setOption to completely native methods.
+ *
  * Revision 1.3  1999/11/01 17:08:47  mpf
  * - Renamed sockXXXX() native functions to socketXXXX().
  *
@@ -115,17 +118,8 @@ class PlainSocketImpl extends SocketImpl {
 		close();
 	}
 
-	public Object getOption(int opt) throws SocketException {
-
-		if (opt == SO_TIMEOUT) {
-			return new Integer(timeout);
-		}
-		return socketGetOption(opt);
-	}
-
-	public void setOption(int opt, Object val) throws SocketException {
-
-	}
+	public native void setOption(int opt, Object val) throws SocketException;
+	public native Object getOption(int opt) throws SocketException;
 
 	/* Native method declarations */
 	protected native void bind(InetAddress host, int port) throws IOException;
@@ -135,8 +129,6 @@ class PlainSocketImpl extends SocketImpl {
 	protected native void socketCreate(boolean stream) throws IOException;
 	private native void socketConnect(InetAddress host, int port) throws IOException;
 	private native void socketClose() throws IOException;
-	private native Object socketGetOption(int opt) throws SocketException;
-	private native void socketSetOption(int opt, Object val) throws SocketException;
 
 }
 
