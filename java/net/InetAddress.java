@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.6  2000/05/13 05:55:00  mpf
+ * - Changed pton() native method to stringToAddress()
+ *
  * Revision 1.5  1999/11/30 14:39:49  mpf
  * - removed some old unused and commented out code.
  *
@@ -63,7 +66,7 @@ class InetAddress implements java.io.Serializable {
     int family;
 
 	// set this to true to enable debugging output
-	private final static boolean DEBUG = false;
+	private final static boolean DEBUG = true;
 
     /*
      * Load my net6 library into runtime.
@@ -282,7 +285,7 @@ class InetAddress implements java.io.Serializable {
 		if ( (host == null) || (host.length() == 0) ) {
 			return loopbackHost;
 		} else {
-			byte[] addr = pton(host);
+			byte[] addr = stringToAddress(host);
 
 			if (addr != null) {
 				return new InetAddress(null, addr);
@@ -315,7 +318,7 @@ class InetAddress implements java.io.Serializable {
 		}
 
 		/* check if host is IP address */
-		byte[] addr = pton(host);
+		byte[] addr = stringToAddress(host);
 		
 		if (addr != null) {
 			InetAddress[] address = new InetAddress[1];
@@ -370,7 +373,7 @@ class InetAddress implements java.io.Serializable {
 	 * @param host the host name to check
 	 * @returns a byte array of the address or null
 	 */
-	private static native byte[] pton(String host);
+	private static native byte[] stringToAddress(String host);
 	private static native byte[] getLoopbackAddress();
 	private static native byte[] getAnyLocalAddress();
     private static native String getLocalHostName();

@@ -30,8 +30,7 @@ CC			= gcc
 INCLUDES	= -I$(SRCDIR)/include -I$(JAVADIR)/include \
 				-I$(JAVADIR)/include/$(JNI_INCLUDE)
 DEBUG		=
-#DEBUG		=
-#DEBUG		= 
+DEBUG		= -DDEBUG
 CFLAGS		= -g -O2 -Wall $(DEBUG) $(INCLUDES)
 LDFLAGS		= -shared
 

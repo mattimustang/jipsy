@@ -23,6 +23,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.11  2000/05/13 05:55:00  mpf
+ * - Changed pton() native method to stringToAddress()
+ *
  * Revision 1.10  1999/12/06 07:03:10  mpf
  * - Added #ifdef DEBUG around some code that was missing it.
  *
@@ -64,11 +67,11 @@
 
 /*
  * Class:     java_net_InetAddress
- * Method:    pton
+ * Method:    stringToAddress
  * Signature: (Ljava/lang/String;)[B
  */
 JNIEXPORT jbyteArray JNICALL
-Java_java_net_InetAddress_pton(JNIEnv *env, jclass this, jstring host)
+Java_java_net_InetAddress_stringToAddress(JNIEnv *env, jclass this, jstring host)
 {
 	jbyte *bytes = NULL;
 	jbyteArray byteArray;
@@ -79,7 +82,7 @@ Java_java_net_InetAddress_pton(JNIEnv *env, jclass this, jstring host)
 
 	
 #ifdef DEBUG
-	printf("NATIVE: InetAddress: pton() entering\n");
+	printf("NATIVE: InetAddress: stringToAddress() entering\n");
 #endif
 	/* convert jstring to char array  */
 	hostname = (char *)(*env)->GetStringUTFChars(env, host, NULL);
@@ -103,7 +106,7 @@ Java_java_net_InetAddress_pton(JNIEnv *env, jclass this, jstring host)
 	(*env)->SetByteArrayRegion(env, byteArray, 0, len, bytes);
 	(*env)->ReleaseStringUTFChars(env, host, hostname);
 #ifdef DEBUG
-	printf("NATIVE: InetAddress: pton() leaving\n");
+	printf("NATIVE: InetAddress: stringToAddress() leaving\n");
 #endif
 	return byteArray;
 }
