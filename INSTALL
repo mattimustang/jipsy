@@ -1,38 +1,64 @@
 $Id$ 
 
 HOW TO COMPILE AND INSTALL JIPSY
+================================
 
 Before using the JIPSY software you must compile the Java classes and native functions that make it up. To do this:
 
 if you unpacked the distribution into /usr/local/src
 
-cd /usr/local/src/jipsy/java/net
+cd /usr/local/src/jipsy-0.2.0
 
 edit the Makefile to suite your environment.
 
-then type `make'
+then type `make all'
 
-This will compile all of the .java and .c files in that directory and link the c object files into a shared library in the $SOURCE_DIR/lib directory.
+This will compile all of the .java and .c files and link the object files into a shared library named libnet6.so in the lib directory.
 
-To use the software you must then change a few environment variable in order to get Java to use the new IPv6 classes instead of it's own. To do this
+It will also create a file called jipsy.jar in the lib directory.
+
+
+Using JIPSY with Java 2
+=======================
+
+To use the software you must then copy libnet6.so into your $JAVA_HOME/jre/lib/<platform> directory. 
+
+For example, on my development host I do this:
+
+cp lib/libnet6.so /usr/java/jre/lib/ppc
+
+You can then use the jipsy wrapper script in the bin directory instead of the "java" command to run your Java programs. You will need to edit this script to match the location of your java environment.
+
+For example:
+
+jipsy MyClass
+
+
+Using JIPSY with Java 1.1
+=========================
+
+If you wish to use JIPSY with Java 1.1 then you should download jipsy version 0.1.1 from http://sourceforge.net/projects/jipsy .
 
 Set the CLASSPATH to this:
 
-export CLASSPATH=$SOURCE_DIR/jipsy.jar:$CLASSPATH
-export LD_LIBRARY_PATH=/usr/local/src/jipsy/lib
+export CLASSPATH=$SOURCE_DIR/lib/jipsy.jar:$CLASSPATH
+export LD_LIBRARY_PATH=$SOURCE_DIR/lib
 
 you can now run any java network application and it will use the replacement
-classes. The file ".environment" shows exactly what I do to set it all up.
+classes.
+
+
 
 TROUBLESHOOTING
+---------------
 
 Compilation Problems
 
 In order to compile jipsy you need the following software installed
 
 * gcc
-* java development kit (1.1.6 or higher, Note: hasn't been tested with 1.2)
-* glibc 2.1.2 (will run on systems with glibc 2.1.1 but will not compile because of some data structure definitions that are required. May be fixed in a later release)
+* java development kit (1.1.8 or higher)
+* glibc 2.1.3 
 
 
 URL.class Problem
