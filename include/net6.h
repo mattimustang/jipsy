@@ -21,18 +21,11 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/11/01 17:23:41  mpf
+ * *** empty log message ***
+ *
  * Revision 1.1  1999/10/31 04:36:23  mpf
  * - Moved from ../java/net to here.
- *
- * Revision 1.3  1999/10/27 14:41:06  mpf
- * - Updated.
- *
- * Revision 1.2  1999/10/20 23:06:41  mpf
- * - Added defines for EX_* exception types.
- * - Cleaned up prototypes.
- *
- * Revision 1.1  1999/10/20 07:39:36  mpf
- * Initital import.
  *
  *
  */
@@ -66,6 +59,9 @@
 #define EX_CONNECT		2
 #define EX_SOCKET		3
 
+#define IPV4_ADDRLEN		4
+#define IPV6_ADDRLEN		16
+
 
 /* function prototypes */
 
@@ -73,6 +69,7 @@
 void throwException(JNIEnv *, int, const char *);
 int getSocketFileDescriptor(JNIEnv *, jobject);
 int getSockAddrPort(struct sockaddr_storage *);
+int getSocketFamily(int);
 
 
 #endif
