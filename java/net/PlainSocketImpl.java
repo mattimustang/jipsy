@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/11/01 17:08:47  mpf
+ * - Renamed sockXXXX() native functions to socketXXXX().
+ *
  * Revision 1.2  1999/10/27 14:39:13  mpf
  * - Removed private copy of socket file descriptor fdnum.
  * - Changed available() to be a native function
@@ -57,9 +60,8 @@ class PlainSocketImpl extends SocketImpl {
 	protected void create(boolean stream) throws IOException
 	{
 		fd = new FileDescriptor();
-		sockCreate(stream);
+		socketCreate(stream);
 	}
-	protected native void sockCreate(boolean stream) throws IOException;
 
 	protected void connect(String host, int port)
 		throws UnknownHostException, IOException {
@@ -69,7 +71,7 @@ class PlainSocketImpl extends SocketImpl {
 			address = InetAddress.getByName(host);
 	
 			try {
-				sockConnect(address, port);
+				socketConnect(address, port);
 				return;
 			} catch (IOException ioe) {
 				e = ioe;
@@ -87,18 +89,10 @@ class PlainSocketImpl extends SocketImpl {
 
 		this.address = host;
 		this.port = port;
-		sockConnect(host, port);
+		socketConnect(host, port);
 	}
 
-	protected native void bind(InetAddress host, int port) throws IOException;
 
-	protected native void listen(int backlog) throws IOException;
-
-	private native void accept(PlainSocketImpl s) throws IOException;
-
-	protected void accept(SocketImpl s) throws IOException {
-		accept((PlainSocketImpl)s);
-	}
 
 	protected InputStream getInputStream() throws IOException {
 			return new SocketInputStream(this);
@@ -108,11 +102,10 @@ class PlainSocketImpl extends SocketImpl {
 			return new SocketOutputStream(this);
 	}
 
-	protected native int available() throws IOException;
 
 	protected void close() throws IOException {
 		if (fd != null) {
-			sockClose();
+			socketClose();
 			fd = null;
 		}
 			
@@ -123,15 +116,27 @@ class PlainSocketImpl extends SocketImpl {
 	}
 
 	public Object getOption(int opt) throws SocketException {
-		return null;
+
+		if (opt == SO_TIMEOUT) {
+			return new Integer(timeout);
+		}
+		return socketGetOption(opt);
 	}
 
 	public void setOption(int opt, Object val) throws SocketException {
 
 	}
-	private native void sockConnect(InetAddress host, int port) throws IOException;
-	private native void sockClose() throws IOException;
-	private native int sockAvailable() throws IOException;
+
+	/* Native method declarations */
+	protected native void bind(InetAddress host, int port) throws IOException;
+	protected native void listen(int backlog) throws IOException;
+	protected native void accept(SocketImpl s) throws IOException;
+	protected native int available() throws IOException;
+	protected native void socketCreate(boolean stream) throws IOException;
+	private native void socketConnect(InetAddress host, int port) throws IOException;
+	private native void socketClose() throws IOException;
+	private native Object socketGetOption(int opt) throws SocketException;
+	private native void socketSetOption(int opt, Object val) throws SocketException;
 
 }
 
