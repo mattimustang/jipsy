@@ -9,14 +9,6 @@ extern "C" {
 #endif
 /*
  * Class:     java_net_PlainSocketImpl
- * Method:    sockCreate
- * Signature: (Z)V
- */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
-  (JNIEnv *, jobject, jboolean);
-
-/*
- * Class:     java_net_PlainSocketImpl
  * Method:    bind
  * Signature: (Ljava/net/InetAddress;I)V
  */
@@ -34,7 +26,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_listen
 /*
  * Class:     java_net_PlainSocketImpl
  * Method:    accept
- * Signature: (Ljava/net/PlainSocketImpl;)V
+ * Signature: (Ljava/net/SocketImpl;)V
  */
 JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
   (JNIEnv *, jobject, jobject);
@@ -49,27 +41,43 @@ JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_available
 
 /*
  * Class:     java_net_PlainSocketImpl
- * Method:    sockConnect
+ * Method:    socketCreate
+ * Signature: (Z)V
+ */
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketCreate
+  (JNIEnv *, jobject, jboolean);
+
+/*
+ * Class:     java_net_PlainSocketImpl
+ * Method:    socketConnect
  * Signature: (Ljava/net/InetAddress;I)V
  */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketConnect
   (JNIEnv *, jobject, jobject, jint);
 
 /*
  * Class:     java_net_PlainSocketImpl
- * Method:    sockClose
+ * Method:    socketClose
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockClose
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketClose
   (JNIEnv *, jobject);
 
 /*
  * Class:     java_net_PlainSocketImpl
- * Method:    sockAvailable
- * Signature: ()I
+ * Method:    socketGetOption
+ * Signature: (I)Ljava/lang/Object;
  */
-JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_sockAvailable
-  (JNIEnv *, jobject);
+JNIEXPORT jobject JNICALL Java_java_net_PlainSocketImpl_socketGetOption
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     java_net_PlainSocketImpl
+ * Method:    socketSetOption
+ * Signature: (ILjava/lang/Object;)V
+ */
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketSetOption
+  (JNIEnv *, jobject, jint, jobject);
 
 #ifdef __cplusplus
 }
