@@ -23,6 +23,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  1999/11/03 22:27:56  mpf
+ * - Added getOption and setOption native functions.
+ *
  * Revision 1.3  1999/11/01 16:58:43  mpf
  * - Squashed many bugs in bind() and accept(). Everything working
  * - Fixed problem with socketConnect() so we can now connect to an IPv4
@@ -449,7 +452,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketCreate
 
 	/* throw IOException if none of the sockets were any good */
 	if (res == NULL) {
-		throwException(env, EX_IO, "socketCreate(): Cannot create a valid socket");
+		throwException(env, EX_IO, "Cannot create a valid socket");
 		return;
 	}
 
@@ -523,4 +526,185 @@ JNIEXPORT jint JNICALL Java_java_net_PlainSocketImpl_available
 #endif
 	}
 	return (nbits == 0 ? 0 : 1);
+}
+
+/*
+ * Class:     java_net_PlainSocketImpl
+ * Method:    getOption
+ * Signature: (I)Ljava/lang/Object;
+ */
+JNIEXPORT jobject JNICALL Java_java_net_PlainSocketImpl_getOption
+  (JNIEnv *env, jobject this, jint opt)
+{
+	int sockfd;
+	struct sockaddr_storage ss;
+	int ssLength = sizeof(ss);
+	int val;
+	int valLength = sizeof(val);
+	struct linger lingerVal;
+	int lingerLength;
+
+	jclass boolClass, intClass;
+	jmethodID boolMethod, intMethod;
+
+	sockfd = getSocketFileDescriptor(env, this);
+
+	/*
+	 * get the Boolean and Integer classes and their constructors for 
+	 * use later
+	 */
+	boolClass = (*env)->FindClass(env, "java/lang/Boolean");
+	boolMethod = (*env)->GetMethodID(env, boolClass, "<init>", "(Z)V");
+	intClass = (*env)->FindClass(env, "java/lang/Integer");
+	intMethod = (*env)->GetMethodID(env, boolClass, "<init>", "(I)V");
+
+	switch (opt) {
+		case J_TCP_NODELAY:
+
+			if (getsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char *)&val, &valLength) != 0)
+				goto error;
+
+			/* create the Boolean instance to return */
+			return (*env)->NewObject(env, boolClass, boolMethod, (val != 0));
+		case J_SO_LINGER:
+			if (getsockopt(sockfd, SOL_SOCKET, SO_LINGER, (char *)&lingerVal,
+							&lingerLength) != 0)
+				goto error;
+			if (lingerVal.l_onoff) {
+				/* create the new Integer instance to return */
+				return (*env)->NewObject(env, intClass, intMethod, lingerVal.l_linger);
+			} else {
+				/* create the Boolean instance to return */
+				return (*env)->NewObject(env, boolClass, boolMethod, JNI_FALSE);
+			}
+
+		case J_SO_BINDADDR: {
+			jbyteArray addrArray;
+			jbyte *addrBytes;
+			jobject addrObj;
+			jclass addrClass;
+			jmethodID addrMethod;
+
+			/* get the socket's address structure */
+			if (getsockname(sockfd, (struct sockaddr *)&ss, &ssLength) != 0)
+				goto error;
+
+			/* find out the address family and copy it's address */
+			switch (ss.__ss_family) {
+				case AF_INET: {
+					struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
+					addrArray = (*env)->NewByteArray(env, IPV4_ADDRLEN);
+					addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
+					memcpy(addrBytes, &sin->sin_addr, IPV4_ADDRLEN);
+					(*env)->SetByteArrayRegion(env, addrArray, 0, IPV4_ADDRLEN, addrBytes);
+					break;
+				}
+				case AF_INET6: {
+					struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
+					addrArray = (*env)->NewByteArray(env, IPV6_ADDRLEN);
+					addrBytes = (*env)->GetByteArrayElements(env, addrArray, NULL);
+					memcpy(addrBytes, &sin6->sin6_addr, IPV6_ADDRLEN);
+					(*env)->SetByteArrayRegion(env, addrArray, 0, IPV6_ADDRLEN, addrBytes);
+					break;
+				}
+				default:
+					errno = EAFNOSUPPORT;
+					goto error;
+			}
+			/* now create a new InetAddress and return it */
+			addrClass = (*env)->FindClass(env, "java/net/InetAddress");
+			addrMethod = (*env)->GetMethodID(env, addrClass, "<init>", "(Ljava/lang/String;[B)V");
+			addrObj = (*env)->NewObject(env, addrClass, NULL, addrArray);
+			return addrObj;	
+		}
+		case J_SO_TIMEOUT: {
+			jclass thisClass = (*env)->GetObjectClass(env, this);
+			jfieldID timeoutID = (*env)->GetFieldID(env, thisClass, "timeout", "I");
+			jint timeout = (*env)->GetIntField(env, this, timeoutID);
+
+			return (*env)->NewObject(env, intClass, intMethod, timeout);
+		}
+		default:
+			errno = ENOPROTOOPT;
+	}
+	error:
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.getOption(): throwing\n");
+#endif
+	throwException(env, EX_SOCKET, strerror(errno));
+	return NULL;
+
+}
+
+/*
+ * Class:     java_net_PlainSocketImpl
+ * Method:    setOption
+ * Signature: (ILjava/lang/Object;)V
+ */
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_setOption
+  (JNIEnv *env, jobject this, jint opt, jobject val)
+{
+	int value, sockfd;
+	int valueLength = sizeof(value);
+	jclass boolClass;
+
+
+	sockfd = getSocketFileDescriptor(env, this);
+
+	boolClass = (*env)->FindClass(env, "java/lang/Boolean");
+
+	if ((*env)->IsInstanceOf(env, val, boolClass)) {
+		jmethodID boolMethod = (*env)->GetMethodID(env, boolClass, "booleanValue", "()Z");
+		jboolean enable = (*env)->CallBooleanMethod(env, val, boolMethod);
+		if (enable)
+			value = 1;
+		else
+			value = 0;
+	} else {
+		/* FIXME: do stricter type checking */
+		/* assume that val is an Integer */
+		jclass intClass = (*env)->GetObjectClass(env, val);
+		jmethodID intMethod = (*env)->GetMethodID(env, intClass, "intValue", "()I");
+		value = (*env)->CallIntMethod(env, val, intMethod);
+	}
+
+	
+	switch (opt) {
+		case J_TCP_NODELAY:
+			if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char *) &value, valueLength) != 0)
+			goto error;
+			return;
+		case J_SO_LINGER: {
+			struct linger l;
+			l.l_onoff = value;
+			l.l_linger = (value) ? -1 : value;
+			if (setsockopt(sockfd, SOL_SOCKET, SO_LINGER, (char *)&l, sizeof(l)) != 0)
+				goto error;
+			return;
+		}
+		case J_SO_BINDADDR:
+			throwException(env, EX_SOCKET, "SO_BINDADDR is read-only option");
+			return;
+		case J_SO_TIMEOUT: {
+			jclass thisClass = (*env)->GetObjectClass(env, this);
+			jfieldID timeoutID = (*env)->GetFieldID(env, thisClass, "timeout", "I");
+			if (value < 0) {
+				throwException(env, EX_SOCKET, "SO_TIMEOUT value less than zero");
+				return;
+			}
+
+			(*env)->SetIntField(env, this, timeoutID, value);
+			return;
+		}
+		default:
+			errno = ENOPROTOOPT;
+	}
+	error:
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.setOption(): throwing\n");
+#endif
+	throwException(env, EX_SOCKET, strerror(errno));
+	return;
+
+
 }
