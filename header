@@ -21,8 +21,8 @@
  * Change Log:
  *
  * $Log$
- * Revision 1.1  1999/10/18 18:47:43  mpf
- * Initial revision
+ * Revision 1.1.1.1  1999/10/18 18:47:43  mpf
+ * Initial Import
  *
  *
  */
