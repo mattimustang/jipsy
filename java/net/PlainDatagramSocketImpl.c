@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  2000/08/28 06:04:01  mpf
+ * - Added setTimeToLive() and getTimeToLive() JNI methods.
+ *
  * Revision 1.2  1999/11/08 13:36:45  mpf
  * - Added join(), leave(), setTTL(), getTTL(), setOption() and getOption().
  * - General code clean up.
@@ -399,6 +402,46 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_receive
 
 /*
  * Class:     java_net_PlainDatagramSocketImpl
+ * Method:    setTimeToLive
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_setTimeToLive
+  (JNIEnv *, jobject, jint)
+{
+	/* FIXME: copied from setTTL but not tested */
+	int sockfd, sockfamily;
+
+	sockfd = getSocketFileDescriptor(env, this);
+
+	sockfamily = getSocketFamily(sockfd);
+
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.setTTL() entering ttl = %d\n", ttl);
+#endif
+	switch (sockfamily)
+	{
+		case AF_INET:
+			if (setsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_TTL, (char *)&ttl, sizeof(ttl)) < 0)
+				goto error;
+			return;
+
+		case AF_INET6:
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (char *)&ttl, sizeof(ttl)) < 0)
+				goto error;
+			return;
+
+		default:
+			errno = EAFNOSUPPORT;
+			goto error;
+	}
+
+	error:
+		throwException(env, EX_IO, strerror(errno));
+		return;
+}
+
+/*
+ * Class:     java_net_PlainDatagramSocketImpl
  * Method:    setTTL
  * Signature: (B)V
  */
@@ -454,6 +497,7 @@ JNIEXPORT jbyte JNICALL Java_java_net_PlainDatagramSocketImpl_getTTL
 #ifdef DEBUG
 	printf("NATIVE: PlainDatagramSocketImpl.getTTL() entering sockfd = %d sockfamily = %d\n", sockfd, sockfamily);
 #endif
+	/* FIXME: We should be returning the _REAL_ ttl */
 	return 1;
 	switch (sockfamily)
 	{
@@ -480,6 +524,53 @@ JNIEXPORT jbyte JNICALL Java_java_net_PlainDatagramSocketImpl_getTTL
 	error:
 		throwException(env, EX_IO, strerror(errno));
 		return (jbyte)NULL;
+}
+
+/*
+ * Class:     java_net_PlainDatagramSocketImpl
+ * Method:    getTimeToLive
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_java_net_PlainDatagramSocketImpl_getTimeToLive
+  (JNIEnv *, jobject)
+{
+	int sockfd, sockfamily;
+	jint ttl;
+	socklen_t ttlLength;
+
+	sockfd = getSocketFileDescriptor(env, this);
+	sockfamily = getSocketFamily(sockfd);
+
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.getTimeToLive() entering sockfd = %d sockfamily = %d\n", sockfd, sockfamily);
+#endif
+	/* FIXME: We should be returning the _REAL_ ttl */
+	return 1;
+	switch (sockfamily)
+	{
+		case AF_INET:
+			if (getsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_TTL, (char *)&ttl, &ttlLength) < 0)
+				goto error;
+			break;
+
+		case AF_INET6:
+#ifdef DEBUG
+	printf("NATIVE: PlainDatagramSocketImpl.getTimeToLive() getsockopt()\n");
+#endif
+			if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (char *)&ttl, &ttlLength) < 0)
+				goto error;
+			break;
+
+		default:
+			errno = EAFNOSUPPORT;
+			goto error;
+	}
+			
+	return ttl;
+
+	error:
+		throwException(env, EX_IO, strerror(errno));
+		return (jint)NULL;
 }
 
 /*
@@ -521,8 +612,8 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_join
 						goto error;
 					return;
 				}
-/* this code has been removed for the moment because multicast IPv4 mapped
- * IPv6 addresses are not supported.
+/* FIXME: this code has been removed for the moment because multicast IPv4
+ * mapped IPv6 addresses are not supported.
  *
 				case AF_INET6: {
 					struct ipv6_mreq mreq6;
@@ -606,8 +697,8 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_leave
 						goto error;
 					return;
 				}
-				/* removed because IPv6 does not support mapping multicast
-				 * IPv4 addresses.
+				/* FIXME: removed because IPv6 does not support mapping
+				 * multicast IPv4 addresses.
 				case AF_INET6: {
 					struct ipv6_mreq mreq6;
 					struct in6_addr addr6;
