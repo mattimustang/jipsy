@@ -9,7 +9,7 @@ JAVAH		= javah
 
 CC			= gcc
 INCLUDES	= -I/usr/java/include -I/usr/java/include/linux
-CFLAGS		= $(INCLUDES)
+CFLAGS		= -g -O2 -Wall $(INCLUDES)
 LDFLAGS		= -shared
 
 DESTLIB		= libnet6.so
@@ -23,6 +23,9 @@ CLASS		:= $(patsubst %.class,% ,$(wildcard $(CLASSES)))
 
 %.class: %.java
 	$(JAVAC) $<
+
+#%.o: %.c
+#	$(CC) $(CFLAGS) $<
 
 all: classes jni lib
 
