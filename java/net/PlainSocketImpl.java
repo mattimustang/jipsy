@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.5  1999/11/07 05:51:46  mpf
+ * - Added DEBUG variable.
+ *
  * Revision 1.4  1999/11/03 22:28:50  mpf
  * - Changed getOption() and setOption to completely native methods.
  *
@@ -53,7 +56,11 @@ import java.io.*;
 class PlainSocketImpl extends SocketImpl {
 
 	// timeout option get/set by getOption/setOption
+	// value is in milliseconds
 	int timeout = 0;
+
+	// set this to true to enable debugging output
+	private final static boolean DEBUG = true;
 	
 	static {
 		System.loadLibrary("net6");

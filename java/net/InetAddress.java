@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  1999/11/07 05:51:46  mpf
+ * - Added DEBUG variable.
+ *
  * Revision 1.3  1999/10/27 14:15:37  mpf
  * - Changed anyLocalAddress field from private to public as it is used
  *   by Socket.java when binding.
@@ -56,6 +59,9 @@ class InetAddress implements java.io.Serializable {
     byte address[];
     int family;
 
+	// set this to true to enable debugging output
+	private final static boolean DEBUG = false;
+
     /*
      * Load my net6 library into runtime.
      */
@@ -67,7 +73,7 @@ class InetAddress implements java.io.Serializable {
      * Constructor for the Socket.accept() method.
      */
     InetAddress() {
-		System.out.println("CLASS: InetAddress.InetAddress()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.InetAddress()");
     }
 
     /**
@@ -80,7 +86,7 @@ class InetAddress implements java.io.Serializable {
     InetAddress(String hostName, byte[] address) {
 		this.hostName = hostName;
 		this.address  = address;
-		System.out.println("CLASS: InetAddress.InetAddress("+hostName+",byte[])");
+		if (DEBUG) System.out.println("CLASS: InetAddress.InetAddress("+hostName+",byte[])");
     }
 
     /**
@@ -88,7 +94,7 @@ class InetAddress implements java.io.Serializable {
      * IP multicast address.
      */
     public boolean isMulticastAddress() {
-		System.out.println("CLASS: InetAddress.isMulticastAddress()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.isMulticastAddress()");
 		int len = address.length;
 
 		/* IPv4 address check  for class D address */
@@ -112,7 +118,7 @@ class InetAddress implements java.io.Serializable {
      * @return  the fully qualified host name for this address.
      */
     public String getHostName() {
-		System.out.println("CLASS: InetAddress.getHostName()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.getHostName()");
 		if (hostName == null) {
 			try {
 				hostName = getHostByAddress(address);
@@ -131,7 +137,7 @@ class InetAddress implements java.io.Serializable {
      * @return  the raw IP address of this object.
      */
     public byte[] getAddress() {	
-		System.out.println("CLASS: InetAddress.getAddress()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.getAddress()");
 		return address;
     }
 
@@ -147,7 +153,7 @@ class InetAddress implements java.io.Serializable {
 		/* defined in <netinet/in.h> INET6_ADDRSTRLEN = 46 */
 		StringBuffer addrBuffer = new StringBuffer(46);
 
-		System.out.println("CLASS: InetAddress.getHostAddress()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.getHostAddress()");
 
 		/* We have an IPv6 address.
 		 * Return full address for now and don't worry about
@@ -184,7 +190,7 @@ class InetAddress implements java.io.Serializable {
      * @return  a hash code value for this IP address. 
      */
     public int hashCode() {
-		System.out.println("CLASS: InetAddress.hashCode()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.hashCode()");
 		int hash = 0;
 		int i = 0;
 		int len = address.length;
@@ -216,7 +222,7 @@ class InetAddress implements java.io.Serializable {
      * @see     java.net.InetAddress#getAddress()
      */
     public boolean equals(Object obj) {
-		System.out.println("CLASS: InetAddress.equals()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.equals()");
 		if ( (obj != null) && (obj instanceof InetAddress) )
 		{
 			byte addr[] = ((InetAddress)obj).getAddress();
@@ -238,7 +244,7 @@ class InetAddress implements java.io.Serializable {
      * @return  a string representation of this IP address.
      */
     public String toString() {
-		System.out.println("CLASS: InetAddress.toString()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.toString()");
 		return getHostName() + "/" + getHostAddress();
     }
 
@@ -276,7 +282,7 @@ class InetAddress implements java.io.Serializable {
      */
     public static InetAddress getByName(String host)
 	throws UnknownHostException {
-		System.out.println("CLASS: InetAddress.getByName("+host+")");
+		if (DEBUG) System.out.println("CLASS: InetAddress.getByName("+host+")");
 		if ( (host == null) || (host.length() == 0) ) {
 			return loopbackHost;
 		} else {
@@ -307,7 +313,7 @@ class InetAddress implements java.io.Serializable {
     public static InetAddress getAllByName(String host)[]
 	throws UnknownHostException {
 
-		System.out.println("CLASS: InetAddress.getAllByName("+host+")[]");
+		if (DEBUG) System.out.println("CLASS: InetAddress.getAllByName("+host+")[]");
 		if (host == null || host.length() == 0) {
 	    	throw new UnknownHostException(host == null ? "Null string" : host);
 		}
@@ -340,7 +346,7 @@ class InetAddress implements java.io.Serializable {
      *               <code>host</code> could be found.
      */
     public static InetAddress getLocalHost() throws UnknownHostException {
-		System.out.println("CLASS: InetAddress.getLocalHost()");
+		if (DEBUG) System.out.println("CLASS: InetAddress.getLocalHost()");
 
 		SecurityManager s = System.getSecurityManager();
 		

@@ -22,6 +22,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/11/07 05:51:46  mpf
+ * - Added DEBUG variable.
+ *
  * Revision 1.1  1999/11/03 22:31:29  mpf
  * Initial Import
  * - Working but not fully implemented.
@@ -48,6 +51,8 @@ class PlainDatagramSocketImpl extends DatagramSocketImpl
     /* timeout value for receive() */
     private int timeout = 0;
 
+	//set to true to enable debugging output
+	private final static boolean DEBUG = true;
     /**
      * Load the IPv6 networking library
      */
