@@ -23,6 +23,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.6  1999/10/27 14:28:49  mpf
+ * - Cleaned up unused and unititialised variables.
+ *
  * Revision 1.5  1999/10/26 18:28:23  mpf
  * - Removed some of the more verbose debugging messages.
  *
@@ -54,7 +57,7 @@
 JNIEXPORT jbyteArray JNICALL
 Java_java_net_InetAddress_pton(JNIEnv *env, jclass this, jstring host)
 {
-	jbyte *bytes;
+	jbyte *bytes = NULL;
 	jbyteArray byteArray;
 	char *hostname;
 	int len = 0;
@@ -101,10 +104,9 @@ JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getAnyLocalAddress
   (JNIEnv *env, jclass thisClass)
 {
 	
-	struct sockaddr_storage *ss;
 	struct addrinfo hints;
 	struct addrinfo *res, *reshead;
-	jbyte *addr;
+	jbyte *addr = NULL;
 	jbyteArray byteArray;
 	int error;
 	int len = 0;
@@ -184,10 +186,9 @@ JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getLoopbackAddress
   (JNIEnv *env, jclass thisClass)
 {
 	
-	struct sockaddr_storage *ss;
 	struct addrinfo hints;
 	struct addrinfo *res, *reshead;
-	jbyte *addr;
+	jbyte *addr = NULL;
 	jbyteArray byteArray;
 	int error;
 	int len = 0;
@@ -323,7 +324,7 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 
 		/* throw it */
 		(*env)->ThrowNew(env, uhe, gai_strerror(err));
-		return;
+		return NULL;
 	}
 
 	/* save the result pointer and count the number of addresses returned */
@@ -341,9 +342,9 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	res = reshead;
 	count = 0;
 	while (res != NULL) {
-		jbyte *addressBytes;
+		jbyte *addressBytes = NULL;
 		jbyteArray addressBytesArray;
-		int addrlen;
+		int addrlen = 0;
 		switch (res->ai_family) {
 			case AF_INET:
 				addressBytes = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
@@ -353,18 +354,19 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 				addressBytes = (jbyte *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
 				addrlen = 16;
 				break;
-
 			default:
 				break;
 		}
-		/* now put it in the array */
-		addressBytesArray = (*env)->NewByteArray(env,addrlen);
-		(*env)->SetByteArrayRegion(env, addressBytesArray, 0,
-									addrlen, addressBytes);
-		(*env)->SetObjectArrayElement(env, addressArray, count,
-										addressBytesArray);
+		if (addressBytes != NULL) {
+			/* now put it in the array */
+			addressBytesArray = (*env)->NewByteArray(env,addrlen);
+			(*env)->SetByteArrayRegion(env, addressBytesArray, 0,
+										addrlen, addressBytes);
+			(*env)->SetObjectArrayElement(env, addressArray, count,
+											addressBytesArray);
 
-		count++;
+			count++;
+		}
 		res = res->ai_next;
 	} 
 
@@ -433,7 +435,7 @@ JNIEXPORT jstring JNICALL Java_java_net_InetAddress_getHostByAddress
 
 		/* throw it */
 		(*env)->ThrowNew(env, uhe, "Host Unknown");
-		return;
+		return NULL;
 	}
 	hostname = buf;
 #ifdef DEBUG
