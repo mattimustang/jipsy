@@ -25,6 +25,14 @@ JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getLoopbackAddress
 
 /*
  * Class:     java_net_InetAddress
+ * Method:    getAnyLocalAddress
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getAnyLocalAddress
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     java_net_InetAddress
  * Method:    getLocalHostName
  * Signature: ()Ljava/lang/String;
  */

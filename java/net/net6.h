@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/10/27 14:41:06  mpf
+ * - Updated.
+ *
  * Revision 1.2  1999/10/20 23:06:41  mpf
  * - Added defines for EX_* exception types.
  * - Cleaned up prototypes.
@@ -39,6 +42,9 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -46,7 +52,11 @@
 #include <jni.h>
 
 #define DEBUG		1
-#define AI_SERV		"0"		/* used as 'serv' argument to getaddrinfo() */
+#undef DEBUG
+#define SERV_ZERO		"0"		/* used as 'serv' argument to getaddrinfo() */
+#define SERV_NULL		"*"
+#define HOST_NULL		"*"
+
 
 /* Exception types used by throwException() */
 #define EX_IO			0
@@ -57,10 +67,10 @@
 
 /* function prototypes */
 
-/* PlainSocketImpl.c  helper functions */
+/* utility functions */
 void throwException(JNIEnv *, int, const char *);
-int get_fdnum(JNIEnv *, jobject);
-int getSocketPort(struct sockaddr_storage *);
+int getSocketFileDescriptor(JNIEnv *, jobject);
+int getSockAddrPort(struct sockaddr_storage *);
 
 
 #endif
