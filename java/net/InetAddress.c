@@ -23,6 +23,10 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.9  1999/11/30 14:41:01  mpf
+ * - Fixed bug in getAllHostAddresses() where the count would include
+ *   addresses other than AF_INET* like AF_UNIX.
+ *
  * Revision 1.8  1999/11/09 12:05:02  mpf
  * - Modifed to use new macros defined in net6.h
  *
@@ -336,10 +340,20 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	/* save the result pointer and count the number of addresses returned */
 	reshead = res;
 	while (res != NULL) {
-		count++;
+		switch (res->ai_family) {
+			case AF_INET:
+			case AF_INET6:
+				count++;
+				break;
+			default:
+				break;
+		}
 		res = res->ai_next;
 	}
 
+#ifdef DEBUG
+	printf("NATIVE: InetAddress.getAllHostAddresses(): %d address returned\n",count);
+#endif
 	/* allocate storage for addressArray */
 	byteArrayClass = (*env)->FindClass(env, "[B");
 	addressArray = (*env)->NewObjectArray(env, count, byteArrayClass, NULL);
@@ -351,13 +365,22 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 		jbyte *addressBytes = NULL;
 		jbyteArray addressBytesArray;
 		int addrlen = 0;
+		char buf[INET6_ADDRSTRLEN];
 		switch (res->ai_family) {
 			case AF_INET:
 				addressBytes = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
 				addrlen = IPV4_ADDRLEN;
+#ifdef DEBUG
+	printf("NATIVE: InetAddress.getAllHostAddresses: address %d is %s\n",count,
+			inet_ntop(AF_INET, addressBytes, buf, sizeof(buf)));
+#endif
 				break;
 			case AF_INET6:
 				addressBytes = (jbyte *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
+#ifdef DEBUG
+	printf("NATIVE: InetAddress.getAllHostAddresses: address %d is %s\n",count,
+			inet_ntop(AF_INET6, addressBytes, buf, sizeof(buf)));
+#endif
 				addrlen = IPV6_ADDRLEN;
 				break;
 			default:
