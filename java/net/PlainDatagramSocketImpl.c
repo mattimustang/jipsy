@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  2000/08/28 07:34:31  mpf
+ * Fixed JNI method arguments.
+ *
  * Revision 1.3  2000/08/28 06:04:01  mpf
  * - Added setTimeToLive() and getTimeToLive() JNI methods.
  *
@@ -406,7 +409,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_receive
  * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_java_net_PlainDatagramSocketImpl_setTimeToLive
-  (JNIEnv *, jobject, jint)
+  (JNIEnv *env, jobject this, jint ttl)
 {
 	/* FIXME: copied from setTTL but not tested */
 	int sockfd, sockfamily;
@@ -532,7 +535,7 @@ JNIEXPORT jbyte JNICALL Java_java_net_PlainDatagramSocketImpl_getTTL
  * Signature: ()I
  */
 JNIEXPORT jint JNICALL Java_java_net_PlainDatagramSocketImpl_getTimeToLive
-  (JNIEnv *, jobject)
+  (JNIEnv *env, jobject this)
 {
 	int sockfd, sockfamily;
 	jint ttl;
