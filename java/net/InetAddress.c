@@ -23,6 +23,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.8  1999/11/09 12:05:02  mpf
+ * - Modifed to use new macros defined in net6.h
+ *
  * Revision 1.7  1999/11/01 16:55:04  mpf
  * - Modified #includes to reflect their new location.
  *
@@ -76,13 +79,13 @@ Java_java_net_InetAddress_pton(JNIEnv *env, jclass this, jstring host)
 	
 	if (inet_aton(hostname, &((struct sockaddr_in *)&ss)->sin_addr)) {
 		bytes = (jbyte *)&((struct sockaddr_in *)&ss)->sin_addr;
-		len = 4;
+		len = IPV4_ADDRLEN;
 	}
 
 	/* if inet_aton failed len will still be 0. Try IPv6 */
 	if (len == 0 && (inet_pton(AF_INET6, hostname, &((struct sockaddr_in6 *)&ss)->sin6_addr) > 0)) {
 		bytes = (jbyte *)&((struct sockaddr_in6 *)&ss)->sin6_addr;
-		len = 16;
+		len = IPV6_ADDRLEN;
 	}
 	
 	/* wasn't a valid IPv4 or IPv6 address */
@@ -156,11 +159,11 @@ JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getAnyLocalAddress
 	switch (res->ai_family) {
 		case AF_INET:
 			addr = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
-			len = 4;
+			len = IPV4_ADDRLEN;
 			break;
 		case AF_INET6:
 			addr = (jbyte *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
-			len = 16;
+			len = IPV6_ADDRLEN;
 			break;
 		default:
 			break;
@@ -237,11 +240,11 @@ JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getLoopbackAddress
 	switch (res->ai_family) {
 		case AF_INET:
 			addr = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
-			len = 4;
+			len = IPV4_ADDRLEN;
 			break;
 		case AF_INET6:
 			addr = (jbyte *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
-			len = 16;
+			len = IPV6_ADDRLEN;
 			break;
 		default:
 			break;
@@ -351,11 +354,11 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 		switch (res->ai_family) {
 			case AF_INET:
 				addressBytes = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
-				addrlen = 4;
+				addrlen = IPV4_ADDRLEN;
 				break;
 			case AF_INET6:
 				addressBytes = (jbyte *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
-				addrlen = 16;
+				addrlen = IPV6_ADDRLEN;
 				break;
 			default:
 				break;
@@ -405,21 +408,15 @@ JNIEXPORT jstring JNICALL Java_java_net_InetAddress_getHostByAddress
 	addressBytes = (*env)->GetByteArrayElements(env, address, NULL);
 
 	/* got an IPv4 address */
-	if (len == 4) {
-		ss.__ss_family = AF_INET;
-#ifndef SA_LEN
-		ss.__ss_len = len;
-#endif
+	if (len == IPV4_ADDRLEN) {
+		SS_FAMILY(&ss) = AF_INET;
 		sin = (struct sockaddr_in *)&ss;
 		memcpy(&sin->sin_addr, addressBytes, len);
 	}
 
 	/* got an IPv6 address */
-	if (len == 16) {
-		ss.__ss_family = AF_INET6;
-#ifndef SA_LEN
-		ss.__ss_len = len;
-#endif
+	if (len == IPV6_ADDRLEN) {
+		SS_FAMILY(&ss) = AF_INET6;
 		
 		sin6 = (struct sockaddr_in6 *)&ss;
 		memcpy(&sin6->sin6_addr, addressBytes, len);
