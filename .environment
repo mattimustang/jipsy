@@ -1,8 +1,0 @@
-#export THREADS_FLAG=green
-SRCDIR=/home/mpf/capstone/jipsy
-export JDK_HOME=/usr/java
-export JAVA_HOME=/usr/java
-#export JAVA_COMPILER=mwjit-990727
-export PATH=$PATH:/usr/java/bin
-export CLASSPATH=$SRCDIR/jipsy.jar:/usr/java/lib/classes.zip:.
-export LD_LIBRARY_PATH=$SRCDIR/lib
