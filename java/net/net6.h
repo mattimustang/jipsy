@@ -21,6 +21,10 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.2  1999/10/20 23:06:41  mpf
+ * - Added defines for EX_* exception types.
+ * - Cleaned up prototypes.
+ *
  * Revision 1.1  1999/10/20 07:39:36  mpf
  * Initital import.
  *
@@ -30,7 +34,33 @@
 #ifndef __java_net_net6_h__
 #define __java_net_net6_h__
 
+#include <unistd.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+#include <jni.h>
+
 #define DEBUG		1
 #define AI_SERV		"0"		/* used as 'serv' argument to getaddrinfo() */
+
+/* Exception types used by throwException() */
+#define EX_IO			0
+#define EX_BIND			1
+#define EX_CONNECT		2
+#define EX_SOCKET		3
+
+
+/* function prototypes */
+
+/* PlainSocketImpl.c  helper functions */
+void throwException(JNIEnv *, int, const char *);
+int get_fdnum(JNIEnv *, jobject);
+int getSocketPort(struct sockaddr_storage *);
+
 
 #endif
