@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# $Id$
+#
+# This script should be run from the top level directory.
+# The script will generate the JNI headers for the classes below.
+#
+JAVA_HOME=/usr/java
+JAVAH=$JAVA_HOME/bin/javah
+BOOTCLASSPATH="lib/jipsy.jar:$JAVA_HOME/jre/lib/rt.jar"
+JNI_CLASSES="InetAddress PlainDatagramSocketImpl PlainSocketImpl SocketInputStream SocketOutputStream"
+
+for class in $JNI_CLASSES; do
+    echo "Generating JNI header for java.net.$class"
+    $JAVAH -jni -bootclasspath $BOOTCLASSPATH -o include/$class.h \
+    java.net.$class
+done

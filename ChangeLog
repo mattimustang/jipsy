@@ -1,0 +1,10 @@
+$Id$
+
+release 0.2.0 Mon Aug 28 2000
+	- Added support for Java2.
+
+release 0.1.1 Jun 2000
+	- Renamed pton() method to stringToAddress().
+
+release 0.1.0 Dec 1999
+	- First public release

@@ -1,0 +1,11 @@
+$Id$
+
+Things still left TODO
+======================
+
+- Documentation.
+- Fix all of those FIXME's.
+- Support and RMI, JDBC and other core classes that rely on java.net.*.
+- Port to Solaris 8, *BSD.
+- Develop better test suite.
+- Get "java -Djava.library.path=<...> ..." to work!

@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# $Id$
+#
+# a small wrapper script around the java command that forces java
+# to load our java.net classes and shared libraries first.
+#
+PROG=`dirname $0`
+JIPSY_PATH=`dirname $PROG`
+JIPSY_LIB=$JIPSY_PATH/lib
+JAVA_HOME=/usr/java
+JAVA=$JAVA_HOME/bin/java
+BOOTCLASSPATH=$JIPSY_LIB/jipsy.jar:$JAVA_HOME/jre/lib/rt.jar
+#if [ -z "$LD_LIBRARY_PATH" ]; then
+#    LD_LIBRARY_PATH=$JIPSY_LIB
+#else
+#    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$JIPSY_LIB
+#fi
+#export LD_LIBRARY_PATH
+#echo $LD_LIBRARY_PATH
+#echo java -Xcheck:jni -verbose -verbose:jni -Xbootclasspath:$BOOTCLASSPATH $*
+#exec java -Xcheck:jni -verbose -verbose:jni -Xbootclasspath:$BOOTCLASSPATH $*
+exec $JAVA -Xbootclasspath:$BOOTCLASSPATH $*
