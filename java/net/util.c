@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/11/03 22:30:15  mpf
+ * - Updated getSocketFileDescriptor() to handle DatagramSocketImpl too.
+ *
  * Revision 1.2  1999/11/01 17:21:34  mpf
  * - Updated includes.
  * - Added getSocketFamily() function.
@@ -42,15 +45,16 @@
  */
 int getSocketFileDescriptor(JNIEnv *env, jobject obj)
 {
-	jclass class, socketImplClass, fdClass;
+	jclass class, socketImplClass, datagramSocketImplClass, fdClass;
 	jobject fdObj;
 	jfieldID fdID, fdfdID;
 	jint sockfd = -1;
 
 	/* first check that were were passed the correct object class */
 	socketImplClass = (*env)->FindClass(env, "java/net/SocketImpl");
+	datagramSocketImplClass = (*env)->FindClass(env, "java/net/DatagramSocketImpl");
 	if ((obj != NULL)
-		&& ((*env)->IsInstanceOf(env, obj, socketImplClass) == JNI_TRUE)) {
+		&& ((*env)->IsInstanceOf(env, obj, socketImplClass) == JNI_TRUE || ((*env)->IsInstanceOf(env, obj, datagramSocketImplClass) == JNI_TRUE))) {
 
 		class = (*env)->GetObjectClass(env, obj);
 
@@ -75,7 +79,7 @@ void throwException(JNIEnv *env, int type, const char *msg)
 {
 	jclass exception;
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.throwException(): entering\n");
+	printf("NATIVE: throwException(): entering\n");
 #endif
 	switch (type) {
 		case EX_IO:
@@ -100,7 +104,7 @@ void throwException(JNIEnv *env, int type, const char *msg)
 	/* throw it */
 	(*env)->ThrowNew(env, exception, msg);
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.throwException(): returning\n");
+	printf("NATIVE: throwException(): returning\n");
 #endif
 	return;
 }
@@ -113,26 +117,26 @@ void throwException(JNIEnv *env, int type, const char *msg)
 int getSockAddrPort(struct sockaddr_storage *ss)
 {
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.getSocketPort(): entering\n");
+	printf("NATIVE: getSocketPort(): entering\n");
 #endif
 	switch (ss->__ss_family) {
 		case AF_INET: {
 			struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.getSocketPort(): returning INET\n");
+	printf("NATIVE: getSocketPort(): returning INET\n");
 #endif
 			return (sin->sin_port);
 		}
 		case  AF_INET6: {
 			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.getSocketPort(): returning INET6\n");
+	printf("NATIVE: getSocketPort(): returning INET6\n");
 #endif
 			return (sin6->sin6_port);
 		}
 	}
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.getSocketPort(): returning -1\n");
+	printf("NATIVE: getSocketPort(): returning -1\n");
 #endif
 	return -1;
 }
@@ -143,12 +147,12 @@ int setSocketFamily(int *sockfd, int af)
 	struct sockaddr_storage ss;
 	int len;
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.setSocketFamily(): entering af = %d\n", af);
+	printf("NATIVE: setSocketFamily(): entering af = %d\n", af);
 #endif
 
 	if (getsockname(*sockfd, (struct sockaddr *)&ss, &len) == 0) {
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.setSocketFamily(): sockfd family = %d\n", ss.__ss_family);
+	printf("NATIVE: setSocketFamily(): sockfd family = %d\n", ss.__ss_family);
 #endif
 	}
 
@@ -159,11 +163,11 @@ int setSocketFamily(int *sockfd, int af)
 		return -1;
 	if (getsockname(*sockfd, (struct sockaddr *)&ss, &len) == 0) {
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.setSocketFamily(): sockfd new family = %d\n", ss.__ss_family);
+	printf("NATIVE: setSocketFamily(): sockfd new family = %d\n", ss.__ss_family);
 #endif
 	}
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.setSocketFamily(): returning\n");
+	printf("NATIVE: setSocketFamily(): returning\n");
 #endif
 	return 0;
 }
