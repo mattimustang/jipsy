@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  1999/11/08 13:42:22  mpf
+ * - Added CREATE_IPV6_MAPPED() and SS_FAMILY() macros.
+ *
  * Revision 1.3  1999/11/04 12:28:28  mpf
  * - Added Java socket option definitions.
  *
@@ -62,6 +65,8 @@
 #define EX_BIND			1
 #define EX_CONNECT		2
 #define EX_SOCKET		3
+#define EX_INT_IO		4
+#define EX_ILLEGAL_ARG	5
 
 #define IPV4_ADDRLEN		4
 #define IPV6_ADDRLEN		16
@@ -74,6 +79,14 @@
 #define J_IP_MULTICAST_IF	0x10
 #define J_SO_LINGER			0x0080
 #define J_SO_TIMEOUT		0x1006
+
+#define SS_FAMILY(ssp)	(((struct sockaddr *)ssp)->sa_family)
+#define CREATE_IPV6_MAPPED(v6, v4)	{ \
+									v6.s6_addr32[0] = 0; \
+									v6.s6_addr32[1] = 0; \
+									v6.s6_addr32[2] = htonl(0xffff); \
+									memcpy(&v6.s6_addr32[3], v4, sizeof(struct in_addr)); }
+		
 
 /* function prototypes */
 
