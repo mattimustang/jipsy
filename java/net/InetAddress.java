@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.7  2000/08/28 05:45:05  mpf
+ * - Modifed to load libnet6.so the "new" way.
+ *
  * Revision 1.6  2000/05/13 05:55:00  mpf
  * - Changed pton() native method to stringToAddress()
  *
@@ -45,6 +48,9 @@
  */
 
 package java.net;
+import java.security.AccessController;
+import sun.security.action.*;
+
 
 /**
  * This class represents an Internet Protocol (IP) address. 
@@ -72,7 +78,7 @@ class InetAddress implements java.io.Serializable {
      * Load my net6 library into runtime.
      */
     static {
-		System.loadLibrary("net6");
+        AccessController.doPrivileged(new LoadLibraryAction("net6"));
     }
 
     /** 
