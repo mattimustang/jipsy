@@ -19,10 +19,11 @@ ARCH		= ppc
 
 SRCDIR=../..
 
-JAVAC		= javac
-JAVA		= java
-JAVAH		= javah
 JAVADIR		= /usr/java
+JAVAC		= $(JAVADIR)/bin/javac
+JAVA		= $(JAVADIR)/bin/java
+JAVAH		= $(JAVADIR)/bin/javah
+JAR			= $(JAVADIR)/bin/jar
 
 
 CC			= gcc
@@ -34,7 +35,7 @@ DEBUG		=
 CFLAGS		= -g -O2 -Wall $(DEBUG) $(INCLUDES)
 LDFLAGS		= -shared
 
-DESTLIB		= ../../lib/$(OS)/$(ARCH)/libnet6.so
+DESTLIB		= ../../lib/libnet6.so
 
 JAVASRC		= $(wildcard *.java)
 CSRC		= $(wildcard *.c)
@@ -62,7 +63,8 @@ $(CLASS): $(JAVASRC)
 jni: $(CLASS)
 	$(JAVAH) -jni -o $(SRCDIR)/include/$<.h java.net.$<
 
-
+jar:
+	(cd ../..; $(JAR) -0cvf jipsy.jar java/net/*.class)
 
 test:
 	$(JAVA) test.InetAddressTest
