@@ -62,8 +62,19 @@ java PSITestClient 10.1.1.1 $SPORT ::1 24020
 
 kill $SERVERPID
 
+SPORT=7
 echo ""
 echo "Testing UDP/IP client/server interaction"
-java PDSITest 127.0.0.1 7 10.1.1.1 25000
-java PDSITest ::1 7 ::1 25100
-java PDSITest 127.0.0.1 7 ::1 25200
+java PDSITestClient 127.0.0.1 $SPORT 10.1.1.1 25000
+java PDSITestClient ::1 $SPORT ::1 25100
+java PDSITestClient 127.0.0.1 $SPORT ::1 25200
+
+SPORT=28000
+java PDSITestServer &
+SERVERPID=$!
+sleep 2
+java PDSITestClient 127.0.0.1 $SPORT 10.1.1.1 29000
+java PDSITestClient ::1 $SPORT ::1 29100
+java PDSITestClient 127.0.0.1 $SPORT ::1 29200
+
+kill $SERVERPID
