@@ -23,6 +23,11 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.4  1999/10/26 17:16:57  mpf
+ * - Fixed getLoopBackAddress().
+ * - Added getAnyLocalAddress() native function implementation.
+ * - General clean up of code.
+ *
  * Revision 1.3  1999/10/20 22:55:53  mpf
  * - Cleaned up #includes and moved them all to net6.h.
  *
@@ -84,20 +89,101 @@ Java_java_net_InetAddress_pton(JNIEnv *env, jclass this, jstring host)
 	return byteArray;
 }
 
+/*
+ * Class:     java_net_InetAddress
+ * Method:    getAnyLocalAddress
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getAnyLocalAddress
+  (JNIEnv *env, jclass thisClass)
+{
+	
+	struct sockaddr_storage *ss;
+	struct addrinfo hints;
+	struct addrinfo *res, *reshead;
+	jbyte *addr;
+	jbyteArray byteArray;
+	int error;
+	int len = 0;
+
+#ifdef DEBUG
+	printf("NATIVE: getAnyLocalAddress() enter\n");
+#endif
+
+	/* set up hints structure */
+	memset(&hints, 0, sizeof(struct addrinfo));
+
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+
+	error = getaddrinfo(HOST_NULL, SERV_ZERO, &hints, &res);
+	reshead = res;
+
+	if (error) {
+		freeaddrinfo(reshead);
+		return NULL;
+	} 
+
+	/* loop through results and find an address we can actually use */
+	do {
+		int fd = -1;
+
+		switch (res->ai_family)
+		{
+			case AF_INET:
+			case AF_INET6:
+				fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+				break;
+			default:
+				break;
+		}
+		if (fd >= 0) {
+			close(fd);
+			break;
+		}
+	} while ((res = res->ai_next) != NULL);
+
+	/* just return the first valid address we get */
+	switch (res->ai_family) {
+		case AF_INET:
+			addr = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
+			len = 4;
+			break;
+		case AF_INET6:
+			addr = (jbyte *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
+			len = 16;
+			break;
+		default:
+			break;
+	}
+	if (len == 0) {
+		freeaddrinfo(reshead);
+		return NULL;
+	}
+
+	byteArray = (*env)->NewByteArray(env, len);
+	(*env)->SetByteArrayRegion(env, byteArray, 0, len, addr);
+
+	freeaddrinfo(reshead);
+#ifdef DEBUG
+	printf("NATIVE: getAnyLocalAddress(): returning\n");
+#endif
+	return byteArray;
+}
 
 /*
  * Class:     java_net_InetAddress
  * Method:    getLoopbackHost
- * Signature: ()Ljava/net/InetAddress;
+ * Signature: ()[B
  */
-/* this function isn't working and needs lots of work...will come back to it if i have time */
 JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getLoopbackAddress
   (JNIEnv *env, jclass thisClass)
 {
 	
 	struct sockaddr_storage *ss;
 	struct addrinfo hints;
-	struct addrinfo *ai;
+	struct addrinfo *res, *reshead;
 	jbyte *addr;
 	jbyteArray byteArray;
 	int error;
@@ -111,55 +197,60 @@ JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getLoopbackAddress
 	memset(&hints, 0, sizeof(struct addrinfo));
 
 	hints.ai_family = AF_UNSPEC;
-	/*hints.ai_flags = AI_PASSIVE;*/
+	hints.ai_socktype = SOCK_STREAM;
 
-#ifdef DEBUG
-	printf("NATIVE: getLoopbackAddress(): getaddrinfo()\n");
-#endif
-	error = getaddrinfo(NULL, AI_SERV, &hints, &ai);
-#ifdef DEBUG
-	printf("NATIVE: getLoopbackAddress(): getaddrinfo() done\n");
-#endif
+	error = getaddrinfo(HOST_NULL, SERV_ZERO, &hints, &res);
+	reshead = res;
 
-	if (error != EAI_NONAME) {
-#ifdef DEBUG
-		perror(gai_strerror(error));
-		printf("NATIVE: getLoopbackAddress(): getaddrinfo() error\n");
-#endif
+	if (error) {
+		freeaddrinfo(reshead);
 		return NULL;
 	} 
 
-	/* just return the first one we get */
-#ifdef DEBUG
-	printf("NATIVE: getLoopbackAddress(): switch()\n");
-#endif
-	switch (ai->ai_family) {
+	/* loop through results and find an address we can actually use */
+	do {
+		int fd = -1;
+
+		switch (res->ai_family)
+		{
+			case AF_INET:
+			case AF_INET6:
+				fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+				break;
+			default:
+				break;
+		}
+		if (fd >= 0) {
+			close(fd);
+			break;
+		}
+	} while ((res = res->ai_next) != NULL);
+
+	/* just return the first valid address we get */
+	switch (res->ai_family) {
 		case AF_INET:
-			addr = (jbyte *)&((struct sockaddr_in *)ai->ai_addr)->sin_addr;
+			addr = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
 			len = 4;
 			break;
 		case AF_INET6:
-			addr = (jbyte *)&((struct sockaddr_in6 *)ai->ai_addr)->sin6_addr;
+			addr = (jbyte *)&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
 			len = 16;
 			break;
 		default:
-#ifdef DEBUG
-			printf("NATIVE: getLoopbackAddress(): ai->ai_family = %d\n", ai->ai_family);
-#endif
 			break;
 	}
 	if (len == 0) {
-#ifdef DEBUG
-		printf("NATIVE: getLoopbackAddress(): len == 0\n");
-#endif
+		freeaddrinfo(reshead);
 		return NULL;
 	}
 
-#ifdef DEBUG
-	printf("NATIVE: getLoopbackAddress(): NewByteArray()\n");
-#endif
 	byteArray = (*env)->NewByteArray(env, len);
 	(*env)->SetByteArrayRegion(env, byteArray, 0, len, addr);
+
+	freeaddrinfo(reshead);
+#ifdef DEBUG
+	printf("NATIVE: getLoopbackAddress(): returning\n");
+#endif
 	return byteArray;
 }
 
@@ -197,8 +288,7 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	char *hostname;
 	
 	struct addrinfo			hints;
-	struct addrinfo			*res;
-	struct addrinfo			*ressave;
+	struct addrinfo			*res, *reshead;
 	int err;
 	int count = 0;
 
@@ -206,7 +296,7 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	jclass 					byteArrayClass;
 
 #ifdef DEBUG
-	printf("NATIVE: getAllHostAddresses(): enter\n");
+	printf("NATIVE: InetAddress.getAllHostAddresses(): enter\n");
 #endif
 	hostname = (char *)(*env)->GetStringUTFChars(env, host, NULL);
 
@@ -217,9 +307,15 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	/* we don't want to get duplicate addresses for TCP/UDP 
 	 * so we set the hints.ai_socktype to SOCK_STREAM 
 	 */
-	hints.ai_socktype = SOCK_STREAM;
+	/*hints.ai_socktype = SOCK_STREAM;*/
 
-	err = getaddrinfo(hostname, AI_SERV, &hints, &res);
+#ifdef DEBUG
+	printf("NATIVE: InetAddress.getAllHostAddresses(): getaddrinfo()\n");
+#endif
+	err = getaddrinfo(hostname, NULL, &hints, &res);
+#ifdef DEBUG
+	printf("NATIVE: InetAddress.getAllHostAddresses(): getaddrinfo() done\n");
+#endif
 
 	if (err) {
 		/* get a reference to the UnknownHostException */
@@ -228,15 +324,21 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 		if (uhe == 0)
 			return NULL;
 
+#ifdef DEBUG
+	printf("NATIVE: InetAddress.getAllHostAddresses(): getaddrinfo() error throwing\n");
+#endif
 		/* throw it */
-		(*env)->ThrowNew(env, uhe, "Host Unknown");
+		(*env)->ThrowNew(env, uhe, gai_strerror(err));
 		return;
 	}
 
 	/* save the result pointer and count the number of addresses returned */
-	ressave = res;
+	reshead = res;
 	while (res != NULL) {
 		count++;
+#ifdef DEBUG
+	printf("NATIVE: getAllHostAddresses(): res->ai_family = %d\n", res->ai_family);
+#endif
 		res = res->ai_next;
 	}
 #ifdef DEBUG
@@ -248,7 +350,7 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	addressArray = (*env)->NewObjectArray(env, count, byteArrayClass, NULL);
 
 	/* restore the result pointer and get the addresses out */
-	res = ressave;
+	res = reshead;
 	count = 0;
 	while (res != NULL) {
 		jbyte *addressBytes;
@@ -257,7 +359,7 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 		switch (res->ai_family) {
 			case AF_INET:
 #ifdef DEBUG
-	printf("NATIVE: getAllHostAddresses(): res->ai_family == AF_INET\n", count);
+	printf("NATIVE: getAllHostAddresses(): res->ai_family == AF_INET\n");
 #endif
 				addressBytes = (jbyte *)&((struct sockaddr_in *)res->ai_addr)->sin_addr;
 				addrlen = 4;
@@ -289,7 +391,7 @@ JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
 	} 
 
 	/* free the the result pointer */
-	freeaddrinfo(ressave);
+	freeaddrinfo(reshead);
 #ifdef DEBUG
 	printf("NATIVE: getAllHostAddresses(): returning\n");
 #endif
