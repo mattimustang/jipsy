@@ -23,11 +23,17 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/11/01 16:58:43  mpf
+ * - Squashed many bugs in bind() and accept(). Everything working
+ * - Fixed problem with socketConnect() so we can now connect to an IPv4
+ *   address from an IPv6 socket.
+ * - Updated includes.
+ *
  * Revision 1.2  1999/10/27 14:34:52  mpf
- * - Changed sockCreate() now creates the socket and puts it in this.fd.fd.
- * - sockConnect() is now working for IPv6 end points. I need to warp the
- *   socket to an IPv4 socket OR map the IPv4 address to an IPv4 mapped IPv6
- *   address if the socket is an IPv6 socket.
+ * - Changed socketCreate() now creates the socket and puts it in this.fd.fd.
+ * - socketConnect() is now working for IPv6 end points. I need to warp the socket
+ *   to an IPv4 socket OR map the IPv4 address to an IPv4 mapped IPv6 address if
+ *   the socket is an IPv6 socket.
  * - Moved all of the helper functions to util.c
  * - Changed available(), now using select().
  *
@@ -39,8 +45,8 @@
  *
  */
 
-#include "net6.h"
-#include "java_net_PlainSocketImpl.h"
+#include <net6.h>
+#include <PlainSocketImpl.h>
 
 
 /*
@@ -57,12 +63,13 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 	jbyte *addrBytes = NULL;
 	jbyteArray addrByteArray;
 	int addrlen = 0;
-	int len = 0;
+	int len = sizeof(ss);
 
 	int sockfd = getSocketFileDescriptor(env, this);
+	int sockfamily = getSocketFamily(sockfd);
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.bind(): entering\n");
+	printf("NATIVE: PlainSocketImpl.bind(): entering sockfamily = %d\n", sockfamily);
 #endif
 	/* if host is not null then bind to the supplied address */
 	if (host != NULL)  {
@@ -73,37 +80,42 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 		addrBytes = (*env)->GetByteArrayElements(env, addrByteArray, NULL);
 	}
 
+	memset(&ss, 0, sizeof(ss));
 	/* were given an IPv4 address */
-	if (addrlen == 4) {
+	if (addrlen == IPV4_ADDRLEN) {
 		sin = (struct sockaddr_in *)&ss;
 		sin->sin_family = AF_INET;
 		memcpy(&sin->sin_addr, addrBytes, addrlen);
 		sin->sin_port = htons(port);
-		len = sizeof(struct sockaddr_in);
 
 	/* an IPv6 address */
-	} else if (addrlen == 16) {
+	} else if (addrlen == IPV6_ADDRLEN) {
 		sin6 = (struct sockaddr_in6 *)&ss;
 		sin6->sin6_family = AF_INET6;
 		memcpy(&sin6->sin6_addr, addrBytes, addrlen);
 		sin6->sin6_port = htons(port);
-		len = sizeof(struct sockaddr_in6);
 
 	} else if (addrlen == 0 && host != NULL) {
+		errno = EINVAL;
 		goto error;
 	}
-	if (bind(sockfd, (struct sockaddr *)&ss, len)) {
+
+	len = SA_LEN((struct sockaddr *)&ss);
+	if (bind(sockfd, (struct sockaddr *)&ss, len) == 0) {
 		jint lport;
 		jclass thisClass = (*env)->GetObjectClass(env, this);
+
 		/* get the this.address field */
 		jfieldID addrID = (*env)->GetFieldID(env, thisClass, "address",
 											"Ljava/net/InetAddress;");
-		jobject addrObject = (*env)->GetObjectField(env, this, addrID);
 		/* get the this.localport field */
 		jfieldID localportID = (*env)->GetFieldID(env, thisClass, "localport", "I");
 
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.bind() succeeded\n");
+#endif
 		/* set this.address to host */
-		(*env)->SetObjectField(env, addrObject, addrID, host);
+		(*env)->SetObjectField(env, this, addrID, host);
 
 		if (port != 0) {
 			/* set this.localport to port */
@@ -114,6 +126,9 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 		} else {
 			goto error;
 		}
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.bind(): localport = %d\n", lport);
+#endif
 		(*env)->SetIntField(env, this, localportID, lport);
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.bind(): returning\n");
@@ -123,7 +138,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_bind
 	}
 	error:
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.bind(): throwing\n");
+	printf("NATIVE: PlainSocketImpl.bind(): throwing errno = %d\n", errno);
 #endif
 		throwException(env, EX_BIND, strerror(errno));
 		return;
@@ -161,14 +176,14 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 {
 	struct sockaddr_storage ss;
 	socklen_t addrlen = sizeof(ss);
-	int sock;
+	int newsockfd;
 	jbyteArray remoteAddress;
 	jbyte *remoteAddressBytes;
 
 	jclass implClass, thisClass, inetClass, fdClass;
-	jfieldID localportID, portID, addressID, fdID, sockfdID, fdfdID;
+	jfieldID localportID, portID, addressID, fdID, fdfdID;
 	jfieldID thisLocalportID;
-	jint localport, remotePort, thisLocalport;
+	jint remotePort, thisLocalport;
 	jobject newInetAddress, newfd;
 	jmethodID inetMethod, fdMethod;
 	
@@ -177,49 +192,53 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.accept(): entering\n");
 #endif
-	sock = accept(sockfd, (struct sockaddr *)&ss, &addrlen);
+	newsockfd = accept(sockfd, (struct sockaddr *)&ss, &addrlen);
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.accept(): newsockfd = %d\n", newsockfd);
+#endif
 
-	if (sock < 0)
+	if (newsockfd < 0)
 		goto error;
 
 	switch (ss.__ss_family) {
 		case AF_INET: {
 			struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
-			remoteAddress = (*env)->NewByteArray(env, 4);
+			remoteAddress = (*env)->NewByteArray(env, IPV4_ADDRLEN);
 			remoteAddressBytes = (*env)->GetByteArrayElements(env, remoteAddress, NULL);
-			memcpy(remoteAddressBytes, &sin->sin_addr, 4);
-			(*env)->SetByteArrayRegion(env, remoteAddress, 0, 4, remoteAddressBytes);
+			memcpy(remoteAddressBytes, &sin->sin_addr, IPV4_ADDRLEN);
+			(*env)->SetByteArrayRegion(env, remoteAddress, 0, IPV4_ADDRLEN, remoteAddressBytes);
 			remotePort = ntohs(sin->sin_port);
 			break;
 		}
 		case AF_INET6: {
 			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
-			remoteAddress = (*env)->NewByteArray(env, 16);
+			remoteAddress = (*env)->NewByteArray(env, IPV6_ADDRLEN);
 			remoteAddressBytes = (*env)->GetByteArrayElements(env, remoteAddress, NULL);
-			memcpy(remoteAddressBytes, &(sin6->sin6_addr), 16);
-			(*env)->SetByteArrayRegion(env, remoteAddress, 0, 16, remoteAddressBytes);
+			memcpy(remoteAddressBytes, &(sin6->sin6_addr), IPV6_ADDRLEN);
+			(*env)->SetByteArrayRegion(env, remoteAddress, 0, IPV6_ADDRLEN, remoteAddressBytes);
 			remotePort = ntohs(sin6->sin6_port);
 			break;
 		}
 		default:
+			errno = EAFNOSUPPORT;
 			goto error;
 	}
 
+	/* get all the field IDs for the impl object */
 	implClass = (*env)->GetObjectClass(env, impl);
-	sockfdID = (*env)->GetFieldID(env, implClass, "sockfd", "I");
 	localportID = (*env)->GetFieldID(env, implClass, "localport", "I");
 	portID = (*env)->GetFieldID(env, implClass, "port", "I");
 	addressID = (*env)->GetFieldID(env, implClass, "address", "Ljava/net/InetAddress;");
 	fdID = (*env)->GetFieldID(env, implClass, "fd", "Ljava/io/FileDescriptor;");
 
 	/* impl.sockfd = sock; */
-	(*env)->SetIntField(env, impl, sockfdID, sock);
+	/*(*env)->SetIntField(env, impl, sockfdID, sock);*/
 	
 	/* impl.localport = this.localport; */
 	thisClass = (*env)->GetObjectClass(env, this);
 	thisLocalportID = (*env)->GetFieldID(env, thisClass, "localport", "I");
 	thisLocalport = (*env)->GetIntField(env, this, thisLocalportID);
-	(*env)->SetIntField(env, impl, thisLocalportID, thisLocalport);
+	(*env)->SetIntField(env, impl, localportID, thisLocalport);
 
 	/* impl.address = new InetAddress(null, remoteAddress); */
 	inetClass = (*env)->FindClass(env, "java/net/InetAddress");
@@ -237,10 +256,16 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 
 	/* fd.fd = sock */
 	fdfdID = (*env)->GetFieldID(env, fdClass, "fd", "I");
-	(*env)->SetIntField(env, newfd, fdfdID, sock);
+	(*env)->SetIntField(env, newfd, fdfdID, newsockfd);
 
 	/* impl.fd = newfd */
-	(*env)->SetObjectField(env, this, fdID, newfd); 
+	(*env)->SetObjectField(env, impl, fdID, newfd); 
+#ifdef DEBUG
+{
+	int fd = getSocketFileDescriptor(env, impl);
+	printf("NATIVE: PlainSocketImpl.accept(): impl.fd.fd == %d\n",fd);
+}
+#endif
 
 #ifdef DEBUG
 	printf("NATIVE: PlainSocketImpl.accept(): returning\n");
@@ -256,10 +281,10 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_accept
 
 /*
  * Class:     java_net_PlainSocketImpl
- * Method:    sockConnect
+ * Method:    socketConnect
  * Signature: (Ljava/net/InetAddress;I)V
  */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketConnect
   (JNIEnv *env, jobject this, jobject host, jint port)
 {
 	struct sockaddr_storage 	ss;
@@ -269,11 +294,13 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 	jbyteArray addrByteArray;
 	int addrlen = 0;
 	socklen_t len = 0;
+	int sockfamily;
 
 	int sockfd = getSocketFileDescriptor(env, this);
+	sockfamily = getSocketFamily(sockfd);
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): entering sockfd = %d\n", sockfd);
+	printf("NATIVE: PlainSocketImpl.socketConnect(): entering\n");
 #endif
 	/* if host is not null then connect to the supplied address */
 	if (host != NULL)  {
@@ -285,35 +312,56 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 	}
 
 	/* were given an IPv4 address */
-	if (addrlen == 4) {
-		sin = (struct sockaddr_in *)&ss;
-		sin->sin_family = AF_INET;
-		memcpy(&sin->sin_addr, addrBytes, addrlen);
-		sin->sin_port = port;
-		len = sizeof(struct sockaddr_in);
+	if (addrlen == IPV4_ADDRLEN) {
+		if (sockfamily == AF_INET) {
+			sin = (struct sockaddr_in *)&ss;
+			sin->sin_family = AF_INET;
+			memcpy(&sin->sin_addr, addrBytes, addrlen);
+			sin->sin_port = htons(port);
+			len = sizeof(struct sockaddr_in);
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.socketConnect(): got IPv4 && AF_INET\n");
+#endif
+		} else if (sockfamily == AF_INET6) {
+			
+			struct in6_addr *in6;
+			sin6 = (struct sockaddr_in6 *)&ss;
+			in6 = &sin6->sin6_addr;
+			sin6->sin6_family = AF_INET6;
+			/* convert IPv4 address to IPv4-mapped IPv6 address */
+			in6->s6_addr32[0] = 0;
+			in6->s6_addr32[1] = 0;
+			in6->s6_addr32[2] = htonl(0xffff);
+			memcpy(&in6->s6_addr32[3], addrBytes, addrlen);
+			sin6->sin6_port = htons(port);
+			len = sizeof(struct sockaddr_in6);
+		}
 
 	/* an IPv6 address */
-	} else if (addrlen == 16) {
-		sin6 = (struct sockaddr_in6 *)&ss;
-		sin6->sin6_family = AF_INET6;
-		memcpy(&sin6->sin6_addr, addrBytes, addrlen);
-		sin6->sin6_port = port;
-		len = sizeof(struct sockaddr_in6);
+	} else if (addrlen == IPV6_ADDRLEN) {
+		if (sockfamily == AF_INET6) {
+			sin6 = (struct sockaddr_in6 *)&ss;
+			sin6->sin6_family = AF_INET6;
+			memcpy(&sin6->sin6_addr, addrBytes, addrlen);
+			sin6->sin6_port = htons(port);
+			len = sizeof(struct sockaddr_in6);
+		}
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): got IPv6 address\n");
+	printf("NATIVE: PlainSocketImpl.socketConnect(): got IPv6 address\n");
 #endif
 	} else if (addrlen == 0 && host != NULL) {
+		errno = EINVAL;
 		goto error;
 	}
-	
+
 	if ((connect(sockfd, (struct sockaddr *)&ss, len)) == 0) {
 		jint remoteport;
 		jclass thisClass;
 		jfieldID addrID, portID;
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): getting this.address and this.port\n");
+	printf("NATIVE: PlainSocketImpl.socketConnect(): getting this.address and this.port\n");
 #endif
 		thisClass = (*env)->GetObjectClass(env, this);
 		/* get the this.address field */
@@ -326,7 +374,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 		(*env)->SetObjectField(env, this, addrID, host);
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): setting port\n");
+	printf("NATIVE: PlainSocketImpl.socketConnect(): setting port\n");
 #endif
 		if (port != 0) {
 			/* set this.localport to port */
@@ -339,25 +387,14 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 		}
 		(*env)->SetIntField(env, this, portID, remoteport);
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): returning\n");
+	printf("NATIVE: PlainSocketImpl.socketConnect(): returning\n");
 #endif
 		return;
 
-	} else {
-		if (errno == EBADF) {
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): connect failed EBADF\n");
-#endif
-		} else {
-#ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): connect failed errno=%d\n", errno);
-#endif
-
-		}
 	}
 	error:
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockConnect(): throwing\n");
+	printf("NATIVE: PlainSocketImpl.socketConnect(): throwing\n");
 #endif
 		throwException(env, EX_CONNECT, strerror(errno));
 		return;
@@ -365,10 +402,10 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockConnect
 
 /*
  * Class:     java_net_PlainSocketImpl
- * Method:    sockCreate
+ * Method:    socketCreate
  * Signature: (Z)V
  */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketCreate
   (JNIEnv *env, jobject this, jboolean stream)
 {
 	int sockfd;
@@ -380,7 +417,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
 	jfieldID fdID, fdfdID;
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockCreate(): entering\n");
+	printf("NATIVE: PlainSocketImpl.socketCreate(): entering\n");
 #endif
 	/* initialise the hints */
 	memset(&hints, 0, sizeof(hints));
@@ -389,7 +426,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
 	hints.ai_socktype = stream ? SOCK_STREAM : SOCK_DGRAM;
 
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockCreate(): calling getaddrinfo()\n");
+	printf("NATIVE: PlainSocketImpl.socketCreate(): calling getaddrinfo()\n");
 #endif
 	err = getaddrinfo(HOST_NULL, SERV_ZERO, &hints, &res);
 	if (err) {
@@ -399,6 +436,10 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
 
 	reshead = res;
 	do {
+#ifdef DEBUG
+	printf("NATIVE: PlainSocketImpl.socketCreate(): ai_family = %d, ai_socktype = %d, ai_protocol = %d\n",res->ai_family, res->ai_socktype, res->ai_protocol );
+#endif
+
 		sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 		if (sockfd >= 0) {
 			break; /* use this socket */
@@ -408,7 +449,7 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
 
 	/* throw IOException if none of the sockets were any good */
 	if (res == NULL) {
-		throwException(env, EX_IO, "sockCreate(): Cannot create a valid socket");
+		throwException(env, EX_IO, "socketCreate(): Cannot create a valid socket");
 		return;
 	}
 
@@ -428,17 +469,17 @@ JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockCreate
 
 	freeaddrinfo(reshead);
 #ifdef DEBUG
-	printf("NATIVE: PlainSocketImpl.sockCreate(): returning\n");
+	printf("NATIVE: PlainSocketImpl.socketCreate(): returning\n");
 #endif
 	return;
 }
 
 /*
  * Class:     java_net_PlainSocketImpl
- * Method:    sockClose
+ * Method:    socketClose
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_sockClose
+JNIEXPORT void JNICALL Java_java_net_PlainSocketImpl_socketClose
   (JNIEnv *env, jobject this)
 {
 	int sockfd = getSocketFileDescriptor(env, this);
