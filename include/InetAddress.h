@@ -7,21 +7,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef java_net_InetAddress_DEBUG
+#define java_net_InetAddress_DEBUG 1L
+/* Inaccessible static: localHost */
+/* Inaccessible static: loopbackHost */
+/* Inaccessible static: anyLocalAddress */
 /*
  * Class:     java_net_InetAddress
- * Method:    pton
- * Signature: (Ljava/lang/String;)[B
+ * Method:    getAllHostAddresses
+ * Signature: (Ljava/lang/String;)[[B
  */
-JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_pton
+JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
   (JNIEnv *, jclass, jstring);
-
-/*
- * Class:     java_net_InetAddress
- * Method:    getLoopbackAddress
- * Signature: ()[B
- */
-JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getLoopbackAddress
-  (JNIEnv *, jclass);
 
 /*
  * Class:     java_net_InetAddress
@@ -33,6 +30,14 @@ JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getAnyLocalAddress
 
 /*
  * Class:     java_net_InetAddress
+ * Method:    getHostByAddress
+ * Signature: ([B)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_java_net_InetAddress_getHostByAddress
+  (JNIEnv *, jclass, jbyteArray);
+
+/*
+ * Class:     java_net_InetAddress
  * Method:    getLocalHostName
  * Signature: ()Ljava/lang/String;
  */
@@ -41,19 +46,19 @@ JNIEXPORT jstring JNICALL Java_java_net_InetAddress_getLocalHostName
 
 /*
  * Class:     java_net_InetAddress
- * Method:    getAllHostAddresses
- * Signature: (Ljava/lang/String;)[[B
+ * Method:    getLoopbackAddress
+ * Signature: ()[B
  */
-JNIEXPORT jobjectArray JNICALL Java_java_net_InetAddress_getAllHostAddresses
-  (JNIEnv *, jclass, jstring);
+JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_getLoopbackAddress
+  (JNIEnv *, jclass);
 
 /*
  * Class:     java_net_InetAddress
- * Method:    getHostByAddress
- * Signature: ([B)Ljava/lang/String;
+ * Method:    stringToAddress
+ * Signature: (Ljava/lang/String;)[B
  */
-JNIEXPORT jstring JNICALL Java_java_net_InetAddress_getHostByAddress
-  (JNIEnv *, jclass, jbyteArray);
+JNIEXPORT jbyteArray JNICALL Java_java_net_InetAddress_stringToAddress
+  (JNIEnv *, jclass, jstring);
 
 #ifdef __cplusplus
 }

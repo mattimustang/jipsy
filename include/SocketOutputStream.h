@@ -9,8 +9,16 @@ extern "C" {
 #endif
 /*
  * Class:     java_net_SocketOutputStream
+ * Method:    init
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_java_net_SocketOutputStream_init
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     java_net_SocketOutputStream
  * Method:    socketWrite
- * Signature: (I[BII)V
+ * Signature: ([BII)V
  */
 JNIEXPORT void JNICALL Java_java_net_SocketOutputStream_socketWrite
   (JNIEnv *, jobject, jbyteArray, jint, jint);

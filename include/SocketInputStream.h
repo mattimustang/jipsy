@@ -7,6 +7,17 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef java_net_SocketInputStream_SKIP_BUFFER_SIZE
+#define java_net_SocketInputStream_SKIP_BUFFER_SIZE 2048L
+/* Inaccessible static: skipBuffer */
+/*
+ * Class:     java_net_SocketInputStream
+ * Method:    init
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_java_net_SocketInputStream_init
+  (JNIEnv *, jclass);
+
 /*
  * Class:     java_net_SocketInputStream
  * Method:    socketRead
