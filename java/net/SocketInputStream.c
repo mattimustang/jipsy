@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * socketRead.c - Java native socketRead function.
+ * SocketInputStream.c - Java native socketRead function.
  * Copyright (C) 1999 Matthew Flanagan. All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/11/07 03:29:33  mpf
+ * - Updated after rename of file(s).
+ *
  * Revision 1.2  1999/11/01 17:09:28  mpf
  * - Updated includes.
  *
@@ -31,7 +34,7 @@
  */
 
 #include <net6.h>
-#include <socketRead.h>
+#include <SocketInputStream.h>
 
 /*
  * Class:     java_net_SocketInputStream
@@ -50,7 +53,7 @@ JNIEXPORT jint JNICALL Java_java_net_SocketInputStream_socketRead
 	int n;
 
 #ifdef DEBUG
-	printf("NATIVE: SocketOutputStream.socketRead() entering\n");
+	printf("NATIVE: SocketInputStream.socketRead() entering\n");
 #endif
 
 	/* get this class */
@@ -66,7 +69,7 @@ JNIEXPORT jint JNICALL Java_java_net_SocketInputStream_socketRead
 	if ((n = read(sockfd, bytes, length)) < 0) {
 		throwException(env, EX_IO, strerror(errno));
 #ifdef DEBUG
-	printf("NATIVE: SocketOutputStream.socketRead() throwing\n");
+	printf("NATIVE: SocketInputStream.socketRead() throwing\n");
 #endif
 		return n;
 	}
@@ -76,7 +79,7 @@ JNIEXPORT jint JNICALL Java_java_net_SocketInputStream_socketRead
 	 */
 	(*env)->SetByteArrayRegion(env, byteArray, offset, n, bytes);
 #ifdef DEBUG
-	printf("NATIVE: SocketOutputStream.socketRead() returning\n");
+	printf("NATIVE: SocketInputStream.socketRead() returning\n");
 #endif
 	return n;
 }

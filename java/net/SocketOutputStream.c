@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * socketWrite.c - Jave native socketWrite function.
+ * SocketOutputStream.c - Jave native socketWrite function.
  * Copyright (C) 1999 Matthew Flanagan. All Rights Reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -21,6 +21,9 @@
  * Change Log:
  *
  * $Log$
+ * Revision 1.3  1999/11/07 03:29:33  mpf
+ * - Updated after rename of file(s).
+ *
  * Revision 1.2  1999/11/01 17:09:50  mpf
  * - Updated includes.
  *
@@ -31,7 +34,7 @@
  */
 
 #include <net6.h>
-#include <socketWrite.h>
+#include <SocketOutputStream.h>
 
 /*
  * Class:     java_net_SocketOutputStream
