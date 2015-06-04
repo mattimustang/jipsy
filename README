@@ -1,6 +1,6 @@
-$Id$
-
 JIPSY - IPv6 for Java (Java IP version Six readY)
+
+NOTE: THIS PROJECT IS NO LONGER ACTIVE.
 
 The software contained in this distribution is a drop-in replacement for the
 parts of the java.net class package that are IPv4 dependent. The replacement
@@ -13,9 +13,4 @@ See the file INSTALL for information on compiling and using this software.
 
 The latest version of the software can be downloaded from:
 
-http://sourceforge.net/projects/jipsy
-
-You can contact the author by email at:
-
-mpf@mad.scientist.com
-
+    https://github.com/mattimustang/jipsy
